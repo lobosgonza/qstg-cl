@@ -44,10 +44,10 @@ export default function FilterBar({
 		<div className='bg-white border border-gray-100 p-5 rounded-2xl shadow-sm mb-6 space-y-4'>
 			{/* Caja de Búsqueda General */}
 			<div className='flex flex-col sm:flex-row sm:items-center justify-between gap-4'>
-				<div>
+				{/* <div>
 					<h2 className='text-xs font-black text-gray-400 uppercase tracking-wider'>Filtros Avanzados</h2>
 					<p className='text-[11px] font-bold text-red-600 uppercase mt-0.5'>{total} Panoramas Filtrados</p>
-				</div>
+				</div> */}
 
 				<div className='w-full sm:max-w-xs relative'>
 					<span className='absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400 text-xs'>🔍</span>
@@ -62,7 +62,7 @@ export default function FilterBar({
 			</div>
 
 			{/* Selectores Cruzados Multi-Eje - 🌟 CORREGIDO A 5 COLUMNAS EN DESKTOP */}
-			<div className='grid grid-cols-2 md:grid-cols-5 gap-3 pt-3 border-t border-gray-100'>
+			<div className='grid grid-cols-2 md:grid-cols-4 gap-3 pt-3 border-t border-gray-100'>
 				{/* Selector de Categorías */}
 				<div className='flex flex-col gap-1.5'>
 					<label className='text-[10px] font-black text-gray-400 uppercase tracking-wide'>Categoría</label>
@@ -94,7 +94,7 @@ export default function FilterBar({
 				</div>
 
 				{/* Selector de Recintos */}
-				<div className='flex flex-col gap-1.5'>
+				{/* <div className='flex flex-col gap-1.5'>
 					<label className='text-[10px] font-black text-gray-400 uppercase tracking-wide'>Recinto</label>
 					<select
 						value={recintoSel}
@@ -106,7 +106,7 @@ export default function FilterBar({
 							</option>
 						))}
 					</select>
-				</div>
+				</div> */}
 
 				{/* Selector de Ciudades */}
 				<div className='flex flex-col gap-1.5'>

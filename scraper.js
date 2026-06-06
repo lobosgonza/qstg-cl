@@ -36,6 +36,149 @@ function generarSlug(texto) {
         .replace(/-+/g, '-');
 }
 
+
+// ========================================================
+// MOTOR DE NORMALIZACIÓN CRONOLÓGICA Y GEOGRÁFICA SEMÁNTICA
+// ========================================================
+function normalizarCamposEstandar(evento) {
+    const titulo = evento["Título"] || "Evento QSTG";
+    const ticketera = evento["Ticketera"] || "Desconocida";
+
+    // --- 1. PROCESAMIENTO DE UBICACIÓN (Recinto, Ciudad, Región) ---
+    const lugarCrudo = (evento["Lugar/Recinto"] || "RECINTO POR CONFIRMAR").toUpperCase().trim();
+    let recinto = lugarCrudo;
+    let ciudad = "SANTIAGO";
+    let region = "METROPOLITANA";
+
+    // Si el recinto ya viene con el guion unificador que armamos antes (ej: "TEATRO - SANTIAGO")
+    if (lugarCrudo.includes(" - ")) {
+        const partesLugar = lugarCrudo.split(" - ");
+        recinto = partesLugar[0].trim();
+        ciudad = partesLugar[1].trim();
+    } else {
+        // Fallback por si viene plano desde PuntoTicket o Ticketmaster
+        if (lugarCrudo.includes("CONCEPCION") || lugarCrudo.includes("BODEGUITA") || lugarCrudo.includes("MARINA")) {
+            ciudad = "CONCEPCIÓN";
+        } else if (lugarCrudo.includes("CHILLAN") || lugarCrudo.includes("MAGNOLIA")) {
+            ciudad = "CHILLÁN";
+        } else if (lcurdo = lugarCrudo.includes("VALDIVIA") || lugarCrudo.includes("BÜNEMANN")) {
+            ciudad = "VALDIVIA";
+        } else if (lugarCrudo.includes("TALCA")) {
+            ciudad = "TALCA";
+        } else if (lugarCrudo.includes("SERENA") || lugarCrudo.includes("FARO")) {
+            ciudad = "LA SERENA";
+        } else if (lugarCrudo.includes("IQUIQUE")) {
+            ciudad = "IQUIQUE";
+        } else if (lugarCrudo.includes("PUERTO VARAS")) {
+            ciudad = "PUERTO VARAS";
+        } else if (lugarCrudo.includes("COYHAIQUE")) {
+            ciudad = "COYHAIQUE";
+        } else if (lugarCrudo.includes("PUNTA ARENAS")) {
+            ciudad = "PUNTA ARENAS";
+        } else if (lugarCrudo.includes("MONTICELLO")) {
+            ciudad = "MOSTAZAL";
+        }
+    }
+
+    // Deducción automática de Región para tus futuros filtros macro
+    if (["SANTIAGO", "ÑUÑOA", "PROVIDENCIA", "PIRQUE"].includes(ciudad)) region = "METROPOLITANA";
+    else if (ciudad === "CONCEPCIÓN") region = "BIOBÍO";
+    else if (ciudad === "CHILLÁN") region = "ÑUBLE";
+    else if (ciudad === "VALDIVIA") region = "LOS RÍOS";
+    else if (ciudad === "LA SERENA") region = "COQUIMBO";
+    else if (ciudad === "IQUIQUE") region = "TARAPACÁ";
+    else if (ciudad === "PUERTO VARAS") region = "LOS LAGOS";
+    else if (ciudad === "COYHAIQUE") region = "AYSÉN";
+    else if (ciudad === "PUNTA ARENAS") region = "MAGALLANES";
+    else if (ciudad === "MOSTAZAL") region = "O'HIGGINS";
+    else if (ciudad === "COPIAPÓ") region = "ATACAMA";
+
+    // --- 2. DESARME CRONOLÓGICO INTELIGENTE (Fecha Filtro, Día Texto, Hora) ---
+    const fechaTextoOriginal = (evento["Fecha Evento"] || "").toUpperCase().trim();
+
+    let fechaFiltro = "2026-12-31"; // Fallback por defecto si no hay fecha definida
+    let diaTexto = "Fecha por confirmar";
+    let hora = "20:00"; // Hora estándar de conciertos en Chile
+    let esMultifecha = false;
+
+    // Diccionario semántico de meses
+    const mesesDic = {
+        'ENERO': '01', 'FEBRERO': '02', 'MARZO': '03', 'ABRIL': '04', 'MAYO': '05', 'JUNIO': '06',
+        'JULIO': '07', 'AGOSTO': '08', 'SEPTIEMBRE': '09', 'OCTUBRE': '10', 'NOVIEMBRE': '11', 'DICIEMBRE': '12'
+    };
+
+    if (fechaTextoOriginal && !fechaTextoOriginal.includes("CONFIRMAR") && !fechaTextoOriginal.includes("TICKET CONCIERTO")) {
+
+        // Detectamos si el texto original habla de múltiples días (Ej: "14, 16 Y 17 DE OCTUBRE", "DEL 6 AL 31")
+        if (fechaTextoOriginal.includes(",") || fechaTextoOriginal.includes(" Y ") || fechaTextoOriginal.includes(" AL ")) {
+            esMultifecha = true;
+        }
+
+        // Caso A: Formato estructurado por guiones (Ej: "30-05-2026")
+        if (fechaTextoOriginal.includes("-") && fechaTextoOriginal.split("-")[0].length <= 2) {
+            const bloquesIso = fechaTextoOriginal.split("-");
+            if (bloquesIso.length === 3) {
+                fechaFiltro = `${bloquesIso[2]}-${bloquesIso[1]}-${bloquesIso[0]}`;
+                diaTexto = `${bloquesIso[0]} de ${Object.keys(mesesDic).find(k => mesesDic[k] === bloquesIso[1]) || 'Mayo'}`;
+            }
+        } else {
+            // Caso B: Texto humano mixto (Ej: "7 DE AGOSTO / 21:00 HRS.", "3 de Junio", "20 de Junio")
+            // Limpiamos caracteres de corte comunes
+            const limpio = fechaTextoOriginal.replace(" DE ", " ").replace("/", " ").replace("|", " ").replace(" - ", " ");
+            const trozos = limpio.split(/\s+/); // Cortamos por cualquier cantidad de espacios
+
+            // Intentamos capturar el primer número como el día
+            const primerNumero = trozos.find(t => !isNaN(Number(t)) && Number(t) > 0 && Number(t) <= 31);
+            const dia = primerNumero ? primerNumero.padStart(2, '0') : "01";
+
+            // Intentamos capturar el mes buscando la palabra clave en nuestro diccionario
+            const mesPalabra = trozos.find(t => mesesDic[t]) || "JUNIO";
+            const mesNumero = mesesDic[mesPalabra] || "06";
+
+            // Intentamos capturar el año (si viene uno de 4 dígitos, sino asumimos 2026)
+            const anioDetectado = trozos.find(t => t.length === 4 && !isNaN(Number(t))) || "2026";
+
+            fechaFiltro = `${anioDetectado}-${mesNumero}-${dia}`;
+
+            // Capitalizamos el texto para que se vea hermoso en la tarjeta: "Sábado 20 de Junio"
+            const mesCapitalizado = mesPalabra.charAt(0) + mesPalabra.slice(1).toLowerCase();
+            diaTexto = `${Number(dia)} de ${mesCapitalizado}`;
+
+            // Extraemos la hora buscando el formato XX:XX
+            const matchHora = fechaTextoOriginal.match(/([0-1]?[0-9]|2[0-3]):[0-5][0-9]/);
+            if (matchHora && matchHora[0]) {
+                hora = matchHora[0];
+            }
+        }
+    }
+
+    // --- 3. MAPPING FINAL AL NUEVO CONTRATO ---
+    return {
+        "Título": titulo,
+        "Slug": evento["Slug"] || generarSlug(titulo),
+        "Ticketera": ticketera,
+        "Categoría": evento["Categoría"] || "MÚSICA",
+        "Link Compra": evento["Link Compra"] || "",
+        "Imagen URL": evento["Imagen URL"] || "https://images.unsplash.com/photo-1506157786151-b8491531f063?q=80&w=1000",
+        "Banner URL": evento["Banner URL"] || evento["Imagen URL"] || "https://images.unsplash.com/photo-1506157786151-b8491531f063?q=80&w=1000",
+
+        // El nuevo desglose de Ubicación
+        "Recinto": recinto,
+        "Ciudad": ciudad,
+        "Región": region,
+
+        // El nuevo desglose de Tiempo
+        "Fecha Filtro": fechaFiltro,
+        "Día Texto": diaTexto,
+        "Hora": hora,
+        "Es Multifecha": esMultifecha,
+
+        // Metadata descriptiva
+        "Resumen SEO": evento["Resumen SEO"] || `${titulo}. Compra tus entradas oficiales en ${ticketera}.`,
+        "Descripción Detallada": evento["Descripción Detallada"] || "No se encontró descripción detallada para este evento."
+    };
+}
+
 // ========================================================
 // FUNCIÓN AUXILIAR REPARADA: Forzar Español en Landings
 // ========================================================
@@ -770,12 +913,16 @@ async function correrServidorModular() {
 
         carteleraFinal = Array.from(mapeoMantenido.values());
     }
+    // 🌟 INTEGRACIÓN DEL NUEVO CONTRATO: Mapeamos todos los eventos antes de guardarlos
+    console.log(`🧹 Normalizando y tipando los ${carteleraFinal.length} eventos al formato de Día/Hora aislado...`);
+    const carteleraEstandarizada = carteleraFinal.map(evento => normalizarCamposEstandar(evento));
 
-    fs.writeFileSync(rutaArchivo, JSON.stringify(carteleraFinal, null, 2), 'utf-8');
+    // Cambiamos 'carteleraFinal' por 'carteleraEstandarizada' en la escritura
+    fs.writeFileSync(rutaArchivo, JSON.stringify(carteleraEstandarizada, null, 2), 'utf-8');
 
     console.log(`\n✨ [PROCESO COMPLETADO]`);
     console.log(`   Modo ejecutado: "${argumento.toUpperCase()}"`);
-    console.log(`   Total de la cartelera en QSTG.cl: ${carteleraFinal.length} eventos consolidados.`);
+    console.log(`   Total de la cartelera en QSTG.cl: ${carteleraEstandarizada.length} eventos consolidados.`);
 }
 
 correrServidorModular();

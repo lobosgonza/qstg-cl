@@ -3,25 +3,23 @@ import listaEventos from '../../../eventos.json';
 import { notFound } from 'next/navigation';
 
 interface Props {
-	params: Promise<{ slug: string }>; // Cambiado de id: string a slug: string
+	params: Promise<{ slug: string }>;
 }
 
 export default async function EventoPage({ params }: Props) {
 	const { slug } = await params;
 
-	// Buscamos el evento cuyo Slug coincida exactamente con el de la URL
-	// Usamos .toLowerCase() en ambos lados por si acaso para evitar caídas por una mayúscula
+	// Búsqueda blindada por coincidencia exacta de Slug
 	const evento = listaEventos.find((e: any) => e.Slug?.toLowerCase() === slug?.toLowerCase());
 
 	if (!evento) {
 		notFound();
 	}
-
 	return (
 		<main className='min-h-screen bg-gray-50 text-gray-900 pb-12'>
 			<div className='max-w-4xl mx-auto px-4 pt-6'>
 				<a href='/' className='inline-flex items-center text-xs font-bold text-gray-500 hover:text-red-600 mb-6 transition-colors'>
-					⬅️ VOLVER A LA CARTELERA
+					← VOLVER A LA CARTELERA
 				</a>
 
 				{/* Imagen del Evento */}
@@ -47,10 +45,18 @@ export default async function EventoPage({ params }: Props) {
 
 							<div className='mt-4 space-y-3 text-sm text-gray-600'>
 								<p>
-									📍 <span className='font-semibold text-gray-900'>{evento['Lugar/Recinto']}</span>
+									{/* 🌟 CORRECCIÓN: Mapeado a la propiedad correcta 'Recinto' */}
+									📍 <span className='font-semibold text-gray-900'>{evento['Recinto'] || 'Por Confirmar'}</span>
+									{evento['Ciudad'] && (
+										<span className='text-xs text-gray-400 block ml-5'>
+											{evento['Ciudad']}, {evento['Región']}
+										</span>
+									)}
 								</p>
 								<p>
-									📅 <span className='font-semibold text-gray-900'>{evento['Fecha Evento']}</span>
+									{/* 🌟 CORRECCIÓN: Mapeado a la propiedad correcta 'Día Texto' */}
+									📅 <span className='font-semibold text-gray-900'>{evento['Día Texto'] || 'Fecha por confirmar'}</span>
+									{evento['Hora'] && <span className='text-xs text-gray-400 block ml-5'>{evento['Hora']} hrs</span>}
 								</p>
 							</div>
 
