@@ -41,6 +41,12 @@ export default function CategoríaPage() {
 
 	return (
 		/* 🚀 Llamamos a la plantilla maestra en modo categoría */
-		<PlantillaCartelera listaEventos={listaEventos} infoCategoria={infoCategoria} tagSistema='SECCIÓN // DYNAMIC_ROW' />
+		<PlantillaCartelera
+			listaEventos={listaEventos}
+			infoCategoria={infoCategoria}
+			tagSistema='SECCIÓN // DYNAMIC_ROW'
+			titulo={infoCategoria?.nombre_json || 'CARTELERA'}
+			subtitulo={`CARTELERA COMPLETA DE SECCIÓN // ${categoriaSlug?.toUpperCase()}`}
+		/>
 	);
 }
