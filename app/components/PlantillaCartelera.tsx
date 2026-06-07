@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import FilterBar from '@/app/components/FilterBar';
 import EventCard from '@/app/components/EventCard';
 import MainBanner from '@/app/components/MainBanner';
+import CtaDifusion from '@/app/components/CtaDifusion';
 
 interface PlantillaProps {
 	listaEventos: any[];
@@ -162,7 +163,7 @@ export default function PlantillaCartelera({
 	const eventosVisibles = eventosProcesados.slice(0, limiteVisible);
 
 	return (
-		<main className='min-h-screen pb-20 font-mono'>
+		<main className='min-h-screen font-mono'>
 			{/* 🚀 El banner con doble fondo SÓLO se renderiza en las páginas de categorías dinámicas */}
 			{esCategoria && bannerActivo && <MainBanner evento={bannerActivo} />}
 
@@ -173,7 +174,7 @@ export default function PlantillaCartelera({
 				</button>
 
 				{/* ENCABEZADO DE LA CARTELERA ADAPTATIVO */}
-				<div className='flex flex-col gap-1 border-b-2 border-black pb-6'>
+				<div className='flex flex-col gap-1 '>
 					<span className='w-max bg-black text-white text-[9px] font-mono font-black px-2.5 py-1 uppercase tracking-widest border border-black'>
 						{esCategoria ? `SECCIÓN // ${infoCategoria.nombre_json.toUpperCase()}` : tagSistema}
 					</span>
@@ -246,6 +247,7 @@ export default function PlantillaCartelera({
 						<p className='font-mono text-xs text-gray-400 mt-1 uppercase tracking-tight'>Ningún panorama vigente coincide con los parámetros de esta sección.</p>
 					</div>
 				)}
+				<CtaDifusion />
 			</section>
 		</main>
 	);

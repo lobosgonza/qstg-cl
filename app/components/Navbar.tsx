@@ -22,9 +22,6 @@ export default function Navbar() {
 					<Link href='/todos-los-eventos' className='text-xs font-bold text-gray-900 hover:text-red-600 uppercase tracking-wider transition-colors'>
 						TODOS LOS EVENTOS
 					</Link>
-					<Link href='/contacto' className='text-xs font-bold text-gray-900 hover:text-red-600 uppercase tracking-wider transition-colors'>
-						SUGERIR SHOW
-					</Link>
 				</nav>
 
 				{/* BOTÓN DE ACCIÓN CON ESQUINAS RECTAS Y SOMBRA EN BLOQUE */}
@@ -35,7 +32,7 @@ export default function Navbar() {
 					<Link
 						href='/contacto'
 						className='bg-white text-gray-950 hover:bg-red-600 hover:text-white text-[10px] font-black px-4 py-2.5 rounded-none uppercase tracking-wider border-2 border-black shadow-[3px_3px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[1.5px_1.5px_0px_#000000] transition-all duration-100'>
-						PUBLICAR EVENTO ➜
+						PUBLICAR PANORAMA ➜
 					</Link>
 				</div>
 			</div>

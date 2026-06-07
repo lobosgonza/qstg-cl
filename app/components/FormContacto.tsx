@@ -94,13 +94,16 @@ export default function FormContacto() {
 			<div className='max-w-2xl mx-auto text-center py-16 bg-white border-2 border-black rounded-none p-8 shadow-[4px_4px_0px_#000000] font-mono'>
 				<span className='w-max mx-auto bg-black text-white text-[10px] font-black px-2.5 py-1 uppercase tracking-widest block border border-black'>STATUS // SUCCESS</span>
 				<h3 className='font-editorial text-2xl font-black text-gray-950 mt-4 uppercase tracking-tight'>Evento enviado a revisión</h3>
-				<p className='text-xs text-gray-500 mt-2 max-w-md mx-auto font-bold uppercase tracking-tight'>
+				<p className='text-xs text-gray-500 mt-2 max-w-md mx-auto font-bold uppercase tracking-tight leading-relaxed font-mono'>
 					Los datos se han estructurado en el formato maestro de QSTG y se guardaron en la base de datos de auditoría.
+					<span className='text-red-600 block mt-2 font-black tracking-wider'>
+						// UN AGENTE DE OPERACIONES SE CONTACTARÁ CONTIGO VÍA CORREO ELECTRÓNICO PARA COORDINAR LA VALIDACIÓN FINAL DEL REGISTRO.
+					</span>
 				</p>
 				<button
 					onClick={() => setEnviadoConExito(false)}
 					className='mt-8 bg-white text-gray-950 hover:bg-red-600 hover:text-white font-black text-xs px-6 py-3.5 rounded-none uppercase tracking-wider border-2 border-black shadow-[3px_3px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[1.5px_1.5px_0px_#000000] transition-all duration-100 cursor-pointer'>
-					Sugerir otro show
+					Subir otro evento ➜
 				</button>
 			</div>
 		);
@@ -112,7 +115,7 @@ export default function FormContacto() {
 			{/* ENCABEZADO TÉCNICO */}
 			<div className='mb-8 border-b-2 border-black pb-5'>
 				<span className='w-max bg-black text-white text-[9px] font-mono font-black px-2.5 py-1 uppercase tracking-widest border border-black block'>INGRESO // DATA_ENTRY</span>
-				<h2 className='font-editorial text-2xl font-black tracking-tight text-gray-950 mt-3 uppercase leading-none'>Postular o Sugerir un Panorama</h2>
+				<h2 className='font-editorial text-2xl font-black tracking-tight text-gray-950 mt-3 uppercase leading-none'>PUBLICAR_PANORAMA</h2>
 				<p className='text-[11px] text-gray-500 mt-2 font-bold uppercase tracking-tight'>
 					Completa la ficha técnica del evento. La información se formateará de manera automatizada para la grilla.
 				</p>
@@ -285,7 +288,7 @@ export default function FormContacto() {
 							? 'bg-gray-200 text-gray-400 border-gray-400 cursor-not-allowed shadow-none'
 							: 'bg-black text-white hover:bg-red-600 border-black shadow-[4px_4px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[2px_2px_0px_#000000] cursor-pointer'
 					}`}>
-					{enviando ? 'Construyendo Request JSON...' : 'Postular Evento a BigQuery ➜'}
+					{enviando ? 'Construyendo Request JSON...' : 'Subir Evento ➜'}
 				</button>
 			</form>
 		</div>
