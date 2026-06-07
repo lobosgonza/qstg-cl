@@ -1,1 +1,40 @@
+/* app/globals.css */
 @import 'tailwindcss';
+
+:root {
+	--font-syne: 'Syne', sans-serif;
+	--font-space: 'Space Grotesk', sans-serif;
+}
+
+body {
+	/* 🎨 Un gris editorial muy claro y sofisticado (adiós al blanco puro clínico) */
+	background-color: #f6f6f6;
+
+	/* 📐 Cuadrícula técnica de revista de arte impresa */
+	background-image: linear-gradient(rgba(0, 0, 0, 0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 0, 0, 0.02) 1px, transparent 1px);
+	background-size: 20px 20px; /* Tamaño de la retícula */
+
+	font-family: var(--font-space);
+}
+
+/* 📌 Clases globales que inyectamos en tu Layout */
+.font-editorial {
+	font-family: var(--font-syne);
+}
+
+.font-tecnica {
+	font-family: var(--font-space);
+}
+
+/* 🎨 Tus nuevos "Atajos de Estilo" globales */
+.card-brutalista {
+	@apply bg-white border-2 border-black rounded-none shadow-[4px_4px_0px_#000000] transition-all duration-200;
+}
+
+.boton-sticker {
+	@apply bg-white text-gray-950 font-mono font-black uppercase border-2 border-black shadow-[3px_3px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[1.5px_1.5px_0px_#000000] transition-all duration-100;
+}
+
+.tag-categoria {
+	@apply bg-black text-white text-[9px] font-mono font-black px-2.5 py-1 rounded-none uppercase tracking-widest border border-white shadow-[2px_2px_0px_#000];
+}
