@@ -27,7 +27,6 @@ export default function PlantillaCartelera({ listaEventos, titulo, subtitulo, ta
 	const [limiteVisible, setLimiteVisible] = useState(12);
 	const [catSel, setCatSel] = useState('TODOS');
 
-	// Estado para el diccionario maestro de categorías
 	const [maestroCategorias, setMaestroCategorias] = useState<any[]>([]);
 
 	const MAPEO_MESES: { [key: string]: string } = {
@@ -47,31 +46,26 @@ export default function PlantillaCartelera({ listaEventos, titulo, subtitulo, ta
 
 	const esCategoria = !!infoCategoria;
 
-	// Descargar categorías incluyendo el slug_sponsor comercial
 	useEffect(() => {
 		async function descargarMaestro() {
-			const { data } = await supabase.from('categorias_maestras').select('id, nombre_json, slug_sponsor'); // Traemos el sponsor mapeado
+			const { data } = await supabase.from('categorias_maestras').select('id, nombre_json, slug_sponsor');
 			if (data) setMaestroCategorias(data);
 		}
 		descargarMaestro();
 	}, []);
 
-	// 1. Cálculo inteligente del Banner Activo (Soporta categorías y la Home de Supabase)
 	const bannerActivo = useMemo(() => {
 		if (esCategoria) return infoCategoria.eventoBanner;
 
-		// Si es la Portada, buscamos el highlight configurado en la fila 'HOME'
 		const filaHome = maestroCategorias.find((c) => c.nombre_json === 'HOME');
 		if (filaHome && filaHome.slug_sponsor) {
 			const showDestacado = listaEventos.find((e: any) => e.slug?.toLowerCase() === filaHome.slug_sponsor.toLowerCase());
 			if (showDestacado) return showDestacado;
 		}
 
-		// Fallback por si la DB no responde: muestra el primer evento cronológico
 		return listaEventos[0] || null;
 	}, [esCategoria, infoCategoria, maestroCategorias, listaEventos]);
 
-	// Determina si esta vista requiere pintar el bloque Hero gigante
 	const mostrarHeroBanner = esCategoria || !tagSistema.includes('ARCHIVO');
 
 	// 2. Motor de Filtrado Cruzado Inteligente
@@ -84,8 +78,7 @@ export default function PlantillaCartelera({ listaEventos, titulo, subtitulo, ta
 
 		return listaEventos
 			.filter((evento: any) => {
-				// Excluir el show destacado del banner superior para no duplicarlo en la grilla inferior
-				if (mostrarHeroBanner && evento.slug === bannerActivo?.slug) return false;
+				// 🚀 MODIFICADO: Se eliminó la línea de exclusión. Ahora el show del banner también se lista abajo.
 
 				const campoFechaIn = evento.fecha_inicio || '1970-01-01';
 				const fechaIn = new Date(campoFechaIn);
@@ -100,10 +93,12 @@ export default function PlantillaCartelera({ listaEventos, titulo, subtitulo, ta
 				}
 
 				if (!esCategoria && catSel !== 'TODOS') {
-					const catEncontrada = maestroCategorias.find((c) => c.nombre_json === 'catSel');
+					const catEncontrada = maestroCategorias.find((c) => c.nombre_json === catSel);
 					if (catEncontrada) {
 						const matchCat = evento.categoria_ids?.map(Number).includes(Number(catEncontrada.id));
 						if (!matchCat) return false;
+					} else {
+						return false;
 					}
 				}
 
@@ -137,7 +132,6 @@ export default function PlantillaCartelera({ listaEventos, titulo, subtitulo, ta
 			});
 	}, [listaEventos, infoCategoria, bannerActivo, busqueda, catSel, mesSel, ciudadSel, ordenSel, soloInminentes, esCategoria, maestroCategorias, mostrarHeroBanner]);
 
-	// 3. Extracción dinámica de filtros adaptativos
 	const filtrosDisponibles = useMemo(() => {
 		const meses = new Set<string>();
 		const ciudades = new Set<string>();
@@ -179,8 +173,7 @@ export default function PlantillaCartelera({ listaEventos, titulo, subtitulo, ta
 	const eventosVisibles = eventosProcesados.slice(0, limiteVisible);
 
 	return (
-		<main className='min-h-screen font-mono'>
-			{/* 🚀 CORREGIDO: El banner ahora se renderiza de forma adaptativa en la Home y secciones */}
+		<main className='min-h-screen font-mono bg-white'>
 			{mostrarHeroBanner && bannerActivo && <MainBanner evento={bannerActivo} />}
 
 			<section className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8'>
@@ -238,9 +231,13 @@ export default function PlantillaCartelera({ listaEventos, titulo, subtitulo, ta
 				{eventosVisibles.length > 0 ? (
 					<>
 						<div className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6'>
-							{eventosVisibles.map((evento: any, index: number) => (
-								<EventCard key={evento.slug || index} evento={evento} slugLocal={evento.slug} />
-							))}
+							{eventosVisibles.map((evento: any, index: number) => {
+								const primerId = evento.categoria_ids?.[0];
+								const catMatch = maestroCategorias.find((c) => Number(c.id) === Number(primerId));
+								const nombreCategoria = catMatch ? catMatch.nombre_json : 'PANORAMA';
+
+								return <EventCard key={evento.slug || index} evento={{ ...evento, categoria: nombreCategoria }} slugLocal={evento.slug} />;
+							})}
 						</div>
 
 						{eventosProcesados.length > limiteVisible && (
@@ -255,7 +252,7 @@ export default function PlantillaCartelera({ listaEventos, titulo, subtitulo, ta
 					</>
 				) : (
 					<div className='text-center py-20 bg-white border-2 border-black rounded-none shadow-[4px_4px_0px_#000000] p-8'>
-						<h3 className='font-editorial text-base font-black text-gray-900 uppercase tracking-tight'>Cero coincidencias en el registro</h3>
+						<h3 className='font-editorial text-base font-black text-gray-900 uppercase tracking-tight'>Cero COINCIDENCIAS en el registro</h3>
 						<p className='font-mono text-xs text-gray-400 mt-1 uppercase tracking-tight'>Ningún panorama vigente coincide con los parámetros de esta sección.</p>
 					</div>
 				)}

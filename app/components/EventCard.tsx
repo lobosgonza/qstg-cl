@@ -15,19 +15,19 @@ interface EventoProps {
 		ciudad: string;
 		region: string;
 
-		// Tiempo (Nuevos campos para festivales y orden cronológico)
+		// Tiempo
 		fecha_inicio: string;
 		fecha_fin: string;
-		texto_fechas: string; // Reemplaza a 'Día Texto'
+		texto_fechas: string;
 		hora: string;
 		es_multifecha: boolean;
 		categoria_id?: number;
+		categoria?: string; // 🚀 Añadido: Nombre de la categoría en texto plano para la UI
 	};
 	slugLocal: string;
 }
 
 export default function EventCard({ evento, slugLocal }: EventoProps) {
-	// Actualizado para usar las nuevas propiedades en minúsculas
 	const urlDetalle = `/eventos/${slugLocal || evento.slug}`;
 	const nombreRecinto = (evento.recinto || 'POR CONFIRMAR').split(' - ')[0];
 
@@ -53,8 +53,8 @@ export default function EventCard({ evento, slugLocal }: EventoProps) {
 					</div>
 				</a>
 
-				{/* Badge de ticketera superior izquierda temporalmente para control visual */}
-				<span className='absolute top-3 left-3 tag-categoria pointer-events-none z-10'>{evento.ticketera || 'SCL'}</span>
+				{/* 🚀 CORREGIDO: Ahora renderiza la categoría en la esquina superior izquierda del contenedor de imagen */}
+				<span className='absolute top-3 left-3 tag-categoria pointer-events-none z-10'>{evento.categoria || 'PANORAMA'}</span>
 			</div>
 
 			{/* 2. BLOQUE DE INFORMACIÓN */}
@@ -62,14 +62,14 @@ export default function EventCard({ evento, slugLocal }: EventoProps) {
 				<div className='space-y-2'>
 					{/* Fila superior técnica */}
 					<div className='flex items-center justify-between'>
-						<p className='text-[10px] font-mono font-black text-red-600 uppercase tracking-widest flex items-center gap-1'>FECHA // {evento.texto_fechas}</p>
+						<p className='text-[12px] font-mono font-black text-red-600 uppercase tracking-widest flex items-center gap-1'>// {evento.texto_fechas}</p>
 
-						<span className='bg-white text-gray-900 text-[8px] font-mono font-black px-2 py-0.5 rounded-none uppercase border-2 border-black tracking-tight shadow-[2px_2px_0px_#000000]'>
-							{evento.ticketera}
+						<span className='text-[12px] bg-white text-gray-900 font-mono font-black px-2 py-0.5 rounded-none uppercase border-2 border-black tracking-tight shadow-[2px_2px_0px_#000000]'>
+							{evento.hora}
 						</span>
 					</div>
 
-					{/* El título con tu fuente editorial 'Syne' */}
+					{/* El título con fuente editorial 'Syne' */}
 					<h3 className='font-editorial text-sm font-black text-gray-950 uppercase tracking-tight leading-tight line-clamp-3 min-h-[40px]'>
 						<a href={urlDetalle} className='hover:text-red-600 transition-colors duration-150 block'>
 							{evento.titulo}
@@ -80,15 +80,14 @@ export default function EventCard({ evento, slugLocal }: EventoProps) {
 				{/* 3. METADATOS TÉCNICOS INFERIORES */}
 				<div className='border-t border-gray-200 pt-3 flex items-center justify-between font-mono text-[10px] font-bold text-gray-500 uppercase tracking-tight gap-2'>
 					<div className='truncate max-w-[70%]'>
-						REF // {nombreRecinto} <span className='text-red-500 font-black'>// {evento.ciudad || 'SCL'}</span>
+						// {nombreRecinto}{' '}
+						<span className='text-red-500 font-black'>
+							<br />
+							// {evento.ciudad}
+						</span>
 					</div>
 
 					<div className='flex items-center gap-2 shrink-0 text-gray-400 font-black'>
-						{evento.es_multifecha ? (
-							<span className='text-red-600 bg-red-50 px-1.5 py-0.5 border border-red-200 text-[9px] font-mono'>FEST</span>
-						) : (
-							evento.hora && <span className='text-gray-600'>{evento.hora}</span>
-						)}
 						<span className='text-gray-400 font-normal group-hover:text-red-600 transition-colors shrink-0'>VER ➜</span>
 					</div>
 				</div>

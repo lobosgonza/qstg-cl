@@ -48,7 +48,7 @@ export default function HomePage() {
 		return eventos.filter((e: any) => {
 			if (e.slug === bannerHome?.slug) return false;
 
-			// 🚀 CORREGIDO: Forzamos la lectura de la fecha en horario local añadiendo la T de tiempo
+			// Forzamos la lectura de la fecha en horario local añadiendo la T de tiempo
 			const fechaIn = new Date((e.fecha_inicio || '1970-01-01') + 'T00:00:00');
 			const fechaFin = e.fecha_fin ? new Date(e.fecha_fin + 'T23:59:59') : new Date((e.fecha_inicio || '1970-01-01') + 'T23:59:59');
 
@@ -75,13 +75,18 @@ export default function HomePage() {
 				{/* FILA TEMPORAL: PRÓXIMOS 7 DÍAS */}
 				<div className='space-y-4'>
 					<div className='flex items-center justify-between border-b-2 border-black pb-2'>
-						<h2 className='font-editorial text-xl font-black uppercase tracking-tight'>SYS // TRACK_ROW - PRÓXIMOS 7 DÍAS</h2>
+						<h2 className='font-editorial text-xl font-black uppercase tracking-tight'>// PRÓXIMOS 7 DÍAS</h2>
 					</div>
 					{proximosEventos.length > 0 ? (
 						<div className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6'>
-							{proximosEventos.map((evento) => (
-								<EventCard key={evento.slug} evento={evento} slugLocal={evento.slug} />
-							))}
+							{proximosEventos.map((evento) => {
+								// 🚀 CRUCE DINÁMICO: Buscamos el nombre de la primera categoría asignada en el maestro
+								const primerId = evento.categoria_ids?.[0];
+								const catMatch = categorias.find((c) => Number(c.id) === Number(primerId));
+								const nombreCategoria = catMatch ? catMatch.nombre_json : 'PANORAMA';
+
+								return <EventCard key={evento.slug} evento={{ ...evento, categoria: nombreCategoria }} slugLocal={evento.slug} />;
+							})}
 						</div>
 					) : (
 						<div className='py-6 border border-dashed border-gray-300 text-center'>
@@ -117,7 +122,8 @@ export default function HomePage() {
 								</div>
 								<div className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6'>
 									{eventosDeCat.map((evento) => (
-										<EventCard key={evento.slug} evento={evento} slugLocal={evento.slug} />
+										/* 🚀 HERENCIA DIRECTA: Como ya estamos dentro de la fila de la categoría, le inyectamos directamente su nombre real */
+										<EventCard key={evento.slug} evento={{ ...evento, categoria: cat.nombre_json }} slugLocal={evento.slug} />
 									))}
 								</div>
 							</div>

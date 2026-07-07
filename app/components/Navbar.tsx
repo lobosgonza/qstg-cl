@@ -27,7 +27,6 @@ export default function Navbar() {
 				{/* BOTÓN DE ACCIÓN CON ESQUINAS RECTAS Y SOMBRA EN BLOQUE */}
 				<div className='flex items-center gap-4 font-mono'>
 					{/* Indicador técnico en vez de bandera */}
-					<span className='text-[10px] bg-black text-white px-2.5 py-1 rounded-none font-bold uppercase tracking-widest max-sm:hidden border border-black'>REG // SCL</span>
 
 					<Link
 						href='/contacto'
