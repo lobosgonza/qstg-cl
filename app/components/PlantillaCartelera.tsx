@@ -13,17 +13,10 @@ interface PlantillaProps {
 	subtitulo: string;
 	tagSistema: string;
 	soloInminentes?: boolean; // El interruptor maestro de tiempo
-	infoCategoria?: any; // 🚀 ADICIÓN CRUCIAL: Recibe los datos de Supabase para activar modo sección
+	infoCategoria?: any; // Recibe los datos de Supabase para activar modo sección
 }
 
-export default function PlantillaCartelera({
-	listaEventos,
-	titulo,
-	subtitulo,
-	tagSistema,
-	soloInminentes = false,
-	infoCategoria = null, // Por defecto es null (Modo Cartelera Global)
-}: PlantillaProps) {
+export default function PlantillaCartelera({ listaEventos, titulo, subtitulo, tagSistema, soloInminentes = false, infoCategoria = null }: PlantillaProps) {
 	const router = useRouter();
 
 	const [busqueda, setBusqueda] = useState('');
@@ -48,11 +41,10 @@ export default function PlantillaCartelera({
 		'12': 'DICIEMBRE',
 	};
 
-	// Determinamos de forma limpia el estado operativo del componente
 	const esCategoria = !!infoCategoria;
 	const bannerActivo = esCategoria ? infoCategoria.eventoBanner : listaEventos[0];
 
-	// 1. Motor de Filtrado Cruzado Inteligente
+	// 1. Motor de Filtrado Cruzado Inteligente adaptado a Supabase (snake_case)
 	const eventosProcesados = useMemo(() => {
 		const hoy = new Date();
 		hoy.setHours(0, 0, 0, 0);
@@ -62,87 +54,85 @@ export default function PlantillaCartelera({
 
 		return listaEventos
 			.filter((evento: any) => {
-				// 1. Excluir el show destacado del banner superior si aplica
-				if (esCategoria && evento.Slug === bannerActivo?.Slug) return false;
+				// 1. Excluir el show destacado del banner superior
+				if (esCategoria && evento.slug === bannerActivo?.slug) return false;
 
-				const campoFecha = evento['Fecha Filtro'] || '1970-01-01';
-				const fechaEvento = new Date(campoFecha);
+				const campoFechaIn = evento.fecha_inicio || '1970-01-01';
+				const fechaIn = new Date(campoFechaIn);
+				// Si no tiene fecha de fin (evento unitario), la fecha de término es la misma de inicio
+				const fechaFin = evento.fecha_fin ? new Date(evento.fecha_fin) : new Date(campoFechaIn);
+				fechaFin.setHours(23, 59, 59, 999);
 
-				// 2. Control estricto de ventanas de tiempo iniciales según la ruta activa
+				// 2. Control estricto de ventanas de tiempo (Lógica Festival Multifecha)
 				if (soloInminentes) {
-					const dentroDeRango = fechaEvento >= hoy && fechaEvento <= limite14Dias;
+					const dentroDeRango = fechaFin >= hoy && fechaIn <= limite14Dias;
 					if (!dentroDeRango) return false;
 				} else {
-					if (fechaEvento < hoy) return false; // Filtro base: no mostrar eventos pasados
+					if (fechaFin < hoy) return false; // Oculta si el evento ya terminó por completo
 				}
 
-				// 3. Filtro interactivo de categorías en barra global
+				// 3. Filtro interactivo global de la barra (Filtra por Ticketera/Origen de forma provisoria)
 				if (!esCategoria) {
-					const matchCat = catSel === 'TODOS' || (evento.Categoría || '').toUpperCase().trim() === catSel.toUpperCase().trim();
+					const matchCat = catSel === 'TODOS' || (evento.ticketera || '').toUpperCase().trim() === catSel.toUpperCase().trim();
 					if (!matchCat) return false;
 				}
 
-				// 4. FILTRADO POR CATEGORÍA DIRECTA (Si venimos de la ruta app/[categoria])
+				// 4. Filtrado por categoría directa (Ruta app/[categoria])
 				if (esCategoria) {
-					const catEvento = (evento.Categoría || '').toUpperCase().trim();
-					const catBD = (infoCategoria.nombre_json || '').toUpperCase().trim();
-					const catBDLimpia = catBD.replace('EVENTOS DE ', '').trim();
-
-					const matchEstricto = catEvento === catBD || catEvento === catBDLimpia || catBD.includes(catEvento);
+					const matchEstricto = Number(evento.categoria_id) === Number(infoCategoria.id);
 					if (!matchEstricto) return false;
 				}
 
-				// 5. FILTROS INTERACTIVOS SECUNDARIOS (Habilitados para listas globales e inminentes)
-				// Filtro A: Buscador por texto (Título + Recinto)
-				const recintoTexto = evento.Recinto || '';
-				const textoCompleto = `${evento.Título} ${recintoTexto}`.toLowerCase();
+				// 5. Filtros Interactivos Secundarios
+				// Buscador por texto (Título + Recinto en minúsculas)
+				const recintoTexto = evento.recinto || '';
+				const textoCompleto = `${evento.titulo} ${recintoTexto}`.toLowerCase();
 				if (!textoCompleto.includes(busqueda.toLowerCase())) return false;
 
-				// Filtro B: Selector de Meses (Activo siempre que NO sea la vista de inminentes)
+				// Selector de Meses
 				if (!soloInminentes) {
 					let matchMes = mesSel === 'TODOS';
-					if (!matchMes && campoFecha.includes('-')) {
-						const mesDigito = campoFecha.split('-')[1];
+					if (!matchMes && campoFechaIn.includes('-')) {
+						const mesDigito = campoFechaIn.split('-')[1];
 						matchMes = MAPEO_MESES[mesDigito] === mesSel;
 					}
 					if (!matchMes) return false;
 				}
 
-				// Filtro C: Selector de Ciudad (Habilitado global)
-				const matchCiudad = ciudadSel === 'TODOS' || recintoTexto.toUpperCase().includes(ciudadSel) || evento.Ciudad?.toUpperCase() === ciudadSel;
+				// Selector de Ciudad
+				const matchCiudad = ciudadSel === 'TODOS' || recintoTexto.toUpperCase().includes(ciudadSel) || evento.ciudad?.toUpperCase() === ciudadSel;
 				if (!matchCiudad) return false;
 
 				return true;
 			})
 			.sort((a: any, b: any) => {
-				// Permitir ordenamiento personalizado por A-Z en listados
-				if (ordenSel === 'A-Z') return a.Título.localeCompare(b.Título, 'es');
-				if (ordenSel === 'Z-A') return b.Título.localeCompare(a.Título, 'es');
+				if (ordenSel === 'A-Z') return (a.titulo || '').localeCompare(b.titulo || '', 'es');
+				if (ordenSel === 'Z-A') return (b.titulo || '').localeCompare(a.titulo || '', 'es');
 
-				// Orden cronológico por defecto
-				return a['Fecha Filtro'].localeCompare(b['Fecha Filtro']);
+				// CORREGIDO AQUÍ: Orden cronológico estricto apuntando a fecha_inicio en snake_case
+				return (a.fecha_inicio || '').localeCompare(b.fecha_inicio || '');
 			});
 	}, [listaEventos, infoCategoria, bannerActivo, busqueda, catSel, mesSel, ciudadSel, ordenSel, soloInminentes, esCategoria]);
 
-	// 2. Extracción dinámica de filtros disponibles adaptativos (¡REPARADO AQUÍ!)
+	// 2. Extracción dinámica de filtros adaptativos basados en la data de Supabase
 	const filtrosDisponibles = useMemo(() => {
 		const meses = new Set<string>();
 		const ciudades = new Set<string>();
-		const categorias = new Set<string>(); // 🚀 Se agrega el recolector de categorías del JSON
+		const categorias = new Set<string>();
 
 		const conjuntoOrigen = soloInminentes ? eventosProcesados : listaEventos;
 
 		conjuntoOrigen.forEach((evento: any) => {
-			if (evento.Ciudad) ciudades.add(evento.Ciudad.toUpperCase().trim());
+			if (evento.ciudad) ciudades.add(evento.ciudad.toUpperCase().trim());
 
-			// 🚀 Extraer categorías para el FilterBar interactivo
-			if (!esCategoria && evento.Categoría) {
-				categorias.add(evento.Categoría.toUpperCase().trim());
+			// Extraemos ticketeras como categorías dinámicas provisorias para la barra
+			if (!esCategoria && evento.ticketera) {
+				categorias.add(evento.ticketera.toUpperCase().trim());
 			}
 
-			const campoFecha = evento['Fecha Filtro'];
-			if (!soloInminentes && campoFecha && campoFecha.includes('-')) {
-				const mesDigito = campoFecha.split('-')[1];
+			const campoFechaIn = evento.fecha_inicio;
+			if (!soloInminentes && campoFechaIn && campoFechaIn.includes('-')) {
+				const mesDigito = campoFechaIn.split('-')[1];
 				const mesTexto = MAPEO_MESES[mesDigito];
 				if (mesTexto) meses.add(mesTexto);
 			}
@@ -152,7 +142,6 @@ export default function PlantillaCartelera({
 		const mesesOrdenados = ORDEN_CALENDARIO.filter((mes) => meses.has(mes));
 
 		return {
-			// 🚀 Si es ruta de categoría se bloquea, si es global inyecta los elementos únicos ordenados
 			categorias: esCategoria ? ['TODOS'] : ['TODOS', ...Array.from(categorias).sort()],
 			meses: soloInminentes ? ['TODOS'] : ['TODOS', ...mesesOrdenados],
 			recintos: ['TODOS'],
@@ -164,7 +153,6 @@ export default function PlantillaCartelera({
 
 	return (
 		<main className='min-h-screen font-mono'>
-			{/* 🚀 El banner con doble fondo SÓLO se renderiza en las páginas de categorías dinámicas */}
 			{esCategoria && bannerActivo && <MainBanner evento={bannerActivo} />}
 
 			<section className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8'>
@@ -222,12 +210,12 @@ export default function PlantillaCartelera({
 					/>
 				)}
 
-				{/* GRILLA DE TARJETAS */}
+				{/* GRILLA DE TARJETAS CORREGIDA */}
 				{eventosVisibles.length > 0 ? (
 					<>
 						<div className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6'>
 							{eventosVisibles.map((evento: any, index: number) => (
-								<EventCard key={evento.Slug || index} evento={evento} slugLocal={evento.Slug} />
+								<EventCard key={evento.slug || index} evento={evento} slugLocal={evento.slug} />
 							))}
 						</div>
 

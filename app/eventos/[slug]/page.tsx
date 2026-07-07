@@ -1,5 +1,5 @@
 import React from 'react';
-import listaEventos from '../../../eventos.json';
+import { supabase } from '../../../supabaseClient'; // Conector global
 import { notFound } from 'next/navigation';
 
 interface Props {
@@ -9,12 +9,16 @@ interface Props {
 export default async function EventoPage({ params }: Props) {
 	const { slug } = await params;
 
-	// Búsqueda por coincidencia exacta de Slug
-	const evento = listaEventos.find((e: any) => e.Slug?.toLowerCase() === slug?.toLowerCase());
+	// 1. Buscamos el show en tiempo real en la tabla de Supabase filtrando por slug
+	const { data: evento, error } = await supabase.from('events_list').select('*').eq('slug', slug).single(); // Trae un único registro directamente
 
-	if (!evento) {
+	// Si hay error en la consulta o el evento no existe en la DB, mostramos 404
+	if (error || !evento) {
 		notFound();
 	}
+
+	// Limpieza brutalista del recinto
+	const nombreRecinto = (evento.recinto || 'POR CONFIRMAR').split(' - ')[0];
 
 	return (
 		<main className='min-h-screen pb-12 font-mono'>
@@ -27,15 +31,15 @@ export default async function EventoPage({ params }: Props) {
 				{/* IMAGEN DEL EVENTO CON MARCO DE IMPRENTA */}
 				<div className='relative aspect-video w-full border-2 border-black rounded-none overflow-hidden shadow-[4px_4px_0px_#000000] bg-black'>
 					<img
-						src={evento['Imagen URL'] || 'https://images.unsplash.com/photo-1506157786151-b8491531f063?q=80&w=1000'}
-						alt={evento['Título']}
-						className='w-full h-full object-cover object-center filter  contrast-125 opacity-95 block'
+						src={evento.url_imagen || 'https://images.unsplash.com/photo-1506157786151-b8491531f063?q=80&w=1000'}
+						alt={evento.titulo}
+						className='w-full h-full object-cover object-center filter contrast-125 opacity-95 block'
 						loading='lazy'
 						referrerPolicy='no-referrer'
 					/>
-					{/* Viñeta de Categoría rígida */}
+					{/* Viñeta de Categoría (Usamos la ticketera transitoriamente mientras asocias IDs) */}
 					<span className='absolute bottom-4 left-4 bg-black text-white text-[10px] font-mono font-black px-3 py-1.5 rounded-none uppercase tracking-widest border border-white shadow-[2px_2px_0px_#000]'>
-						{evento['Categoría']}
+						{evento.ticketera || 'EVENTO'}
 					</span>
 				</div>
 
@@ -46,31 +50,31 @@ export default async function EventoPage({ params }: Props) {
 						<div className='bg-white border-2 border-black p-6 rounded-none shadow-[4px_4px_0px_#000000] sticky top-24 space-y-4'>
 							<div>
 								<span className='text-[10px] font-black text-gray-400 uppercase tracking-widest block'>TICKET // VERIFICADO</span>
-								<div className='font-editorial text-xl font-black text-gray-950 uppercase tracking-tight mt-1'>{evento.Ticketera} PASS</div>
+								<div className='font-editorial text-xl font-black text-gray-950 uppercase tracking-tight mt-1'>{evento.ticketera} PASS</div>
 							</div>
 
-							{/* Datos limpios en texto puro, sin iconos */}
+							{/* Datos limpios mapeados a las columnas snake_case de Supabase */}
 							<div className='space-y-3 text-xs border-t border-gray-100 pt-3 text-gray-600 font-bold uppercase tracking-tight'>
 								<p className='leading-normal'>
 									<span className='text-red-600 block text-[9px] tracking-widest font-black'>UBICACIÓN //</span>
-									<span className='text-gray-950 block mt-0.5'>{evento['Recinto'] || 'POR CONFIRMAR'}</span>
-									{evento['Ciudad'] && (
+									<span className='text-gray-950 block mt-0.5'>{nombreRecinto}</span>
+									{evento.ciudad && (
 										<span className='text-[10px] text-gray-400 block mt-0.5'>
-											{evento['Ciudad']} // {evento['Región']}
+											{evento.ciudad} // {evento.region}
 										</span>
 									)}
 								</p>
 
 								<p className='leading-normal'>
 									<span className='text-red-600 block text-[9px] tracking-widest font-black'>HORARIO //</span>
-									<span className='text-gray-950 block mt-0.5'>{evento['Día Texto'] || 'FECHA POR CONFIRMAR'}</span>
-									{evento['Hora'] && <span className='text-[10px] text-gray-400 block mt-0.5'>{evento['Hora']} HRS</span>}
+									<span className='text-gray-950 block mt-0.5'>{evento.texto_fechas || 'FECHA POR CONFIRMAR'}</span>
+									{evento.hora && <span className='text-[10px] text-gray-400 block mt-0.5'>{evento.hora} HRS</span>}
 								</p>
 							</div>
 
-							{/* Botón de compra tipo pegatina */}
+							{/* Botón de compra tipo pegatina apuntando a url_ticket */}
 							<a
-								href={evento['Link Compra']}
+								href={evento.url_ticket}
 								target='_blank'
 								rel='noopener noreferrer'
 								className='block w-full text-center bg-white text-gray-950 hover:bg-red-600 hover:text-white font-black py-3.5 rounded-none text-xs uppercase tracking-wider border-2 border-black shadow-[3px_3px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[1.5px_1.5px_0px_#000000] transition-all duration-100'>
@@ -81,19 +85,19 @@ export default async function EventoPage({ params }: Props) {
 
 					{/* COLUMNA 2 (PRINCIPAL): TEXTOS EDITORIALES */}
 					<div className='md:col-span-2 order-2 md:order-1 space-y-6'>
-						{/* Título de la Ficha en fuente Syne */}
-						<h1 className='font-editorial text-2xl sm:text-4xl font-black text-gray-950 uppercase tracking-tight leading-none'>{evento['Título']}</h1>
+						{/* Título de la Ficha */}
+						<h1 className='font-editorial text-2xl sm:text-4xl font-black text-gray-950 uppercase tracking-tight leading-none'>{evento.titulo}</h1>
 
 						<div className='bg-white border-2 border-black p-6 rounded-none shadow-[4px_4px_0px_#000000] space-y-6 text-xs text-gray-700 font-medium uppercase tracking-tight'>
 							{/* Resumen SEO destacado como bloque de prensa */}
 							<div className='bg-gray-50 border-l-4 border-black p-4 rounded-none my-4'>
-								<p className='text-xs italic text-gray-800 leading-relaxed font-bold'>"{evento['Resumen SEO'] || 'SIN RESUMEN DISPONIBLE.'}"</p>
+								<p className='text-xs italic text-gray-800 leading-relaxed font-bold'>"{evento.resumen_seo || 'SIN RESUMEN DISPONIBLE.'}"</p>
 							</div>
 
 							<div>
 								<h3 className='font-editorial text-sm font-black text-gray-950 mb-2 tracking-tight'>SOBRE EL EVENTO //</h3>
 								<p className='text-gray-600 leading-relaxed whitespace-pre-line font-mono text-[11px] font-bold'>
-									{evento['Descripción Detallada'] || 'NO SE ENCONTRÓ DESCRIPCIÓN DETALLADA PARA ESTE EVENTO.'}
+									{evento.resumen_seo || 'NO SE ENCONTRÓ DESCRIPCIÓN DETALLADA PARA ESTE EVENTO.'}
 								</p>
 							</div>
 

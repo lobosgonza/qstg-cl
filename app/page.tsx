@@ -3,73 +3,97 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { supabase } from '../supabaseClient';
-import listaEventos from '../eventos.json';
 import MainBanner from './components/MainBanner';
 import EventCard from './components/EventCard';
 import CtaDifusion from './components/CtaDifusion';
 
 export default function HomePage() {
 	const [categoriasBD, setCategoriasBD] = useState<any[]>([]);
-	const [slugDestacado, setSlugDestacado] = useState<string>(''); // Aquí guardamos el slug de Def Leppard o el que pague
+	const [eventosBD, setEventosBD] = useState<any[]>([]); // 1. NUEVO: Estado para los eventos de la DB
+	const [slugDestacado, setSlugDestacado] = useState<string>('');
 
-	// 1. Traemos la data directo de tu tabla existente en Supabase
+	// 2. Traemos TODA la data viva en paralelo desde Supabase
 	useEffect(() => {
 		async function cargarDatos() {
-			const { data } = await supabase.from('categorias_maestras').select('id, nombre_json, slug_url, icono, slug_sponsor').order('id', { ascending: true });
+			// Fetch de categorías
+			const { data: catData } = await supabase.from('categorias_maestras').select('id, nombre_json, slug_url, icono, slug_sponsor').order('id', { ascending: true });
 
-			if (data) {
-				setCategoriasBD(data);
-
-				// 🎯 REGLA COMERCIAL:
-				// Buscamos la fila cuyo slug_url sea 'home' para extraer el slug_sponsor premium.
-				const configHome = data.find((cat) => cat.slug_url === 'home');
+			if (catData) {
+				setCategoriasBD(catData);
+				const configHome = catData.find((cat) => cat.slug_url === 'home');
 				if (configHome?.slug_sponsor) {
 					setSlugDestacado(configHome.slug_sponsor);
 				}
+			}
+
+			// Fetch de los eventos del robot (events_list)
+			const { data: eventsData } = await supabase.from('events_list').select('*');
+
+			if (eventsData) {
+				setEventosBD(eventsData);
 			}
 		}
 		cargarDatos();
 	}, []);
 
-	// 2. Definimos el evento estrella buscando en tu JSON por el slug_sponsor de Supabase
+	// 3. Definimos el evento estrella buscando en tu nueva lista de la DB (Cambiamos 'Slug' por 'slug')
 	const eventoBannerHome = useMemo(() => {
-		if (!slugDestacado) return null; // Si no hay sponsor pagado en Supabase, no hay banner destacado.
+		if (!slugDestacado || eventosBD.length === 0) return null;
+		const showPagado = eventosBD.find((e: any) => e.slug === slugDestacado);
+		return showPagado || null;
+	}, [slugDestacado, eventosBD]);
 
-		// Busca el show exacto que pagó las lucas
-		const showPagado = listaEventos.find((e: any) => e.Slug === slugDestacado);
-		return showPagado || null; // Si pusiste un slug erróneo, devuelve null para no romper nada
-	}, [slugDestacado]);
-
-	// 3. Separamos la data en las filas de la portada (Excluyendo el destacado para que no se repita)
+	// 4. Separamos la data en las filas de la portada con lógica multifecha para Festivales
 	const filasHome = useMemo(() => {
+		if (eventosBD.length === 0) return [];
+
 		const hoy = new Date();
 		hoy.setHours(0, 0, 0, 0);
 
-		const limite7Dias = new Date();
-		limite7Dias.setDate(hoy.getDate() + 14);
+		const limite14Dias = new Date();
+		limite14Dias.setDate(hoy.getDate() + 14);
 
-		// A. Fila virtual de inminentes
-		const eventosProximos = listaEventos
+		// A. Fila virtual de inminentes (Incluye festivales activos)
+		const eventosProximos = eventosBD
 			.filter((e: any) => {
-				if (e.Slug === eventoBannerHome?.Slug) return false; // 🚫 Excluye el del banner comercial
-				const fechaEv = new Date(e['Fecha Filtro'] || '1970-01-01');
-				return fechaEv >= hoy && fechaEv <= limite7Dias;
-			})
-			.sort((a: any, b: any) => a['Fecha Filtro'].localeCompare(b['Fecha Filtro']));
+				if (e.slug === eventoBannerHome?.slug) return false; // 🚫 Excluye el destacado
 
-		// B. Filtrado dinámico por categorías (filtrando las filas normales de la BD)
+				const fechaIn = new Date(e.fecha_inicio || '1970-01-01');
+				// Si no tiene fecha_fin, asumimos que dura solo el día de inicio
+				const fechaFin = e.fecha_fin ? new Date(e.fecha_fin) : fechaIn;
+				fechaFin.setHours(23, 59, 59, 999);
+
+				// 🔥 LÓGICA FESTIVAL: Se muestra si el evento termina hoy o en el futuro,
+				// Y SIEMPRE QUE su fecha de inicio no supere el límite de 14 días.
+				return fechaFin >= hoy && fechaIn <= limite14Dias;
+			})
+			.sort((a: any, b: any) => {
+				const dateA = new Date(a.fecha_inicio || '1970-01-01');
+				const dateB = new Date(b.fecha_inicio || '1970-01-01');
+				return dateA.getTime() - dateB.getTime(); // Orden cronológico real
+			});
+
+		// B. Filtrado dinámico por categorías mapeado por id numérico
 		const filasCategorias = categoriasBD
-			// Filtramos la fila 'home' para que no aparezca abajo como si fuera una categoría de shows vacía
 			.filter((cat) => cat.slug_url !== 'home' && cat.nombre_json !== 'HOME')
 			.map((cat) => {
-				const filtrados = listaEventos
+				const filtrados = eventosBD
 					.filter((e: any) => {
-						if (e.Slug === eventoBannerHome?.Slug) return false; // 🚫 Excluye el del banner comercial
-						const fecha = new Date(e['Fecha Filtro'] || '1970-01-01');
-						const matchCat = e.Categoría?.toUpperCase() === cat.nombre_json.toUpperCase();
-						return matchCat && fecha >= hoy;
+						if (e.slug === eventoBannerHome?.slug) return false; // 🚫 Excluye el destacado
+
+						const fechaIn = new Date(e.fecha_inicio || '1970-01-01');
+						const fechaFin = e.fecha_fin ? new Date(e.fecha_fin) : fechaIn;
+						fechaFin.setHours(23, 59, 59, 999);
+
+						// Vinculamos usando el id de categoría que el robot de Juan Pablo inyectará
+						const matchCat = Number(e.categoria_id) === Number(cat.id);
+						return matchCat && fechaFin >= hoy;
 					})
-					.sort((a: any, b: any) => a['Fecha Filtro'].localeCompare(b['Fecha Filtro']));
+					.sort((a: any, b: any) => {
+						const dateA = new Date(a.fecha_inicio || '1970-01-01');
+						const dateB = new Date(b.fecha_inicio || '1970-01-01');
+						return dateA.getTime() - dateB.getTime();
+					});
 
 				return {
 					id: cat.id,
@@ -93,17 +117,17 @@ export default function HomePage() {
 		}
 
 		return filasCategorias;
-	}, [categoriasBD, eventoBannerHome]);
+	}, [categoriasBD, eventosBD, eventoBannerHome]);
 
 	return (
 		<main className='min-h-screen pb-20 font-mono'>
-			{/* 1. Banner manual leyendo desde tu columna slug_sponsor */}
+			{/* Banner comercial dinámico de la DB */}
 			{eventoBannerHome && <MainBanner evento={eventoBannerHome} />}
 
-			{/* 2. Vitrina de Filas Estilo Periódico */}
+			{/* Vitrina de Filas Estilo Periódico */}
 			<section className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-16 space-y-16'>
 				{filasHome.map((fila) => (
-					<div key={fila.id} className='  last:border-none'>
+					<div key={fila.id} className='last:border-none'>
 						<div className='flex justify-between items-end mb-6 border-b border-black/10 pb-3'>
 							<div className='flex flex-col gap-1.5'>
 								<span className='w-max bg-black text-white text-[8px] font-mono font-black px-2 py-0.5 uppercase tracking-widest border border-black'>
@@ -123,14 +147,14 @@ export default function HomePage() {
 
 						<div className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6'>
 							{fila.eventos.map((evento: any) => (
-								<EventCard key={evento.Slug} evento={evento} slugLocal={evento.Slug} />
+								<EventCard key={evento.slug} evento={evento} slugLocal={evento.slug} />
 							))}
 						</div>
 					</div>
 				))}
 
 				{/* BLOQUE DE REMATE GLOBAL */}
-				<div className=' flex flex-col items-center w-full space-y-6'>
+				<div className='flex flex-col items-center w-full space-y-6'>
 					<Link
 						href='/todos-los-eventos'
 						className='w-full text-center bg-red-600 text-white hover:bg-black font-mono font-black text-xs sm:text-sm px-6 py-5 rounded-none uppercase tracking-widest border-2 border-black shadow-[4px_4px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all duration-100 cursor-pointer block'>
