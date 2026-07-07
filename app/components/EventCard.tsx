@@ -70,7 +70,7 @@ export default function EventCard({ evento, slugLocal }: EventoProps) {
 					</div>
 
 					{/* El título con tu fuente editorial 'Syne' */}
-					<h3 className='font-editorial text-sm font-black text-gray-950 uppercase tracking-tight leading-tight line-clamp-2 min-h-[40px]'>
+					<h3 className='font-editorial text-sm font-black text-gray-950 uppercase tracking-tight leading-tight line-clamp-3 min-h-[40px]'>
 						<a href={urlDetalle} className='hover:text-red-600 transition-colors duration-150 block'>
 							{evento.titulo}
 						</a>

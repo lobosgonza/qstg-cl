@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { supabase } from '../../supabaseClient'; // Conector relativo
 import FilterBar from '@/app/components/FilterBar';
 import EventCard from '@/app/components/EventCard';
 import MainBanner from '@/app/components/MainBanner';
@@ -12,8 +13,8 @@ interface PlantillaProps {
 	titulo: string;
 	subtitulo: string;
 	tagSistema: string;
-	soloInminentes?: boolean; // El interruptor maestro de tiempo
-	infoCategoria?: any; // Recibe los datos de Supabase para activar modo sección
+	soloInminentes?: boolean;
+	infoCategoria?: any;
 }
 
 export default function PlantillaCartelera({ listaEventos, titulo, subtitulo, tagSistema, soloInminentes = false, infoCategoria = null }: PlantillaProps) {
@@ -25,6 +26,9 @@ export default function PlantillaCartelera({ listaEventos, titulo, subtitulo, ta
 	const [ordenSel, setOrdenSel] = useState('FECHA');
 	const [limiteVisible, setLimiteVisible] = useState(12);
 	const [catSel, setCatSel] = useState('TODOS');
+
+	// Estado para el diccionario maestro de categorías
+	const [maestroCategorias, setMaestroCategorias] = useState<any[]>([]);
 
 	const MAPEO_MESES: { [key: string]: string } = {
 		'01': 'ENERO',
@@ -42,9 +46,35 @@ export default function PlantillaCartelera({ listaEventos, titulo, subtitulo, ta
 	};
 
 	const esCategoria = !!infoCategoria;
-	const bannerActivo = esCategoria ? infoCategoria.eventoBanner : listaEventos[0];
 
-	// 1. Motor de Filtrado Cruzado Inteligente adaptado a Supabase (snake_case)
+	// Descargar categorías incluyendo el slug_sponsor comercial
+	useEffect(() => {
+		async function descargarMaestro() {
+			const { data } = await supabase.from('categorias_maestras').select('id, nombre_json, slug_sponsor'); // Traemos el sponsor mapeado
+			if (data) setMaestroCategorias(data);
+		}
+		descargarMaestro();
+	}, []);
+
+	// 1. Cálculo inteligente del Banner Activo (Soporta categorías y la Home de Supabase)
+	const bannerActivo = useMemo(() => {
+		if (esCategoria) return infoCategoria.eventoBanner;
+
+		// Si es la Portada, buscamos el highlight configurado en la fila 'HOME'
+		const filaHome = maestroCategorias.find((c) => c.nombre_json === 'HOME');
+		if (filaHome && filaHome.slug_sponsor) {
+			const showDestacado = listaEventos.find((e: any) => e.slug?.toLowerCase() === filaHome.slug_sponsor.toLowerCase());
+			if (showDestacado) return showDestacado;
+		}
+
+		// Fallback por si la DB no responde: muestra el primer evento cronológico
+		return listaEventos[0] || null;
+	}, [esCategoria, infoCategoria, maestroCategorias, listaEventos]);
+
+	// Determina si esta vista requiere pintar el bloque Hero gigante
+	const mostrarHeroBanner = esCategoria || !tagSistema.includes('ARCHIVO');
+
+	// 2. Motor de Filtrado Cruzado Inteligente
 	const eventosProcesados = useMemo(() => {
 		const hoy = new Date();
 		hoy.setHours(0, 0, 0, 0);
@@ -54,42 +84,38 @@ export default function PlantillaCartelera({ listaEventos, titulo, subtitulo, ta
 
 		return listaEventos
 			.filter((evento: any) => {
-				// 1. Excluir el show destacado del banner superior
-				if (esCategoria && evento.slug === bannerActivo?.slug) return false;
+				// Excluir el show destacado del banner superior para no duplicarlo en la grilla inferior
+				if (mostrarHeroBanner && evento.slug === bannerActivo?.slug) return false;
 
 				const campoFechaIn = evento.fecha_inicio || '1970-01-01';
 				const fechaIn = new Date(campoFechaIn);
-				// Si no tiene fecha de fin (evento unitario), la fecha de término es la misma de inicio
 				const fechaFin = evento.fecha_fin ? new Date(evento.fecha_fin) : new Date(campoFechaIn);
 				fechaFin.setHours(23, 59, 59, 999);
 
-				// 2. Control estricto de ventanas de tiempo (Lógica Festival Multifecha)
 				if (soloInminentes) {
 					const dentroDeRango = fechaFin >= hoy && fechaIn <= limite14Dias;
 					if (!dentroDeRango) return false;
 				} else {
-					if (fechaFin < hoy) return false; // Oculta si el evento ya terminó por completo
+					if (fechaFin < hoy) return false;
 				}
 
-				// 3. Filtro interactivo global de la barra (Filtra por Ticketera/Origen de forma provisoria)
-				if (!esCategoria) {
-					const matchCat = catSel === 'TODOS' || (evento.ticketera || '').toUpperCase().trim() === catSel.toUpperCase().trim();
-					if (!matchCat) return false;
+				if (!esCategoria && catSel !== 'TODOS') {
+					const catEncontrada = maestroCategorias.find((c) => c.nombre_json === 'catSel');
+					if (catEncontrada) {
+						const matchCat = evento.categoria_ids?.map(Number).includes(Number(catEncontrada.id));
+						if (!matchCat) return false;
+					}
 				}
 
-				// 4. Filtrado por categoría directa (Ruta app/[categoria])
 				if (esCategoria) {
-					const matchEstricto = Number(evento.categoria_id) === Number(infoCategoria.id);
+					const matchEstricto = evento.categoria_ids?.map(Number).includes(Number(infoCategoria.id));
 					if (!matchEstricto) return false;
 				}
 
-				// 5. Filtros Interactivos Secundarios
-				// Buscador por texto (Título + Recinto en minúsculas)
 				const recintoTexto = evento.recinto || '';
 				const textoCompleto = `${evento.titulo} ${recintoTexto}`.toLowerCase();
 				if (!textoCompleto.includes(busqueda.toLowerCase())) return false;
 
-				// Selector de Meses
 				if (!soloInminentes) {
 					let matchMes = mesSel === 'TODOS';
 					if (!matchMes && campoFechaIn.includes('-')) {
@@ -99,7 +125,6 @@ export default function PlantillaCartelera({ listaEventos, titulo, subtitulo, ta
 					if (!matchMes) return false;
 				}
 
-				// Selector de Ciudad
 				const matchCiudad = ciudadSel === 'TODOS' || recintoTexto.toUpperCase().includes(ciudadSel) || evento.ciudad?.toUpperCase() === ciudadSel;
 				if (!matchCiudad) return false;
 
@@ -108,26 +133,28 @@ export default function PlantillaCartelera({ listaEventos, titulo, subtitulo, ta
 			.sort((a: any, b: any) => {
 				if (ordenSel === 'A-Z') return (a.titulo || '').localeCompare(b.titulo || '', 'es');
 				if (ordenSel === 'Z-A') return (b.titulo || '').localeCompare(a.titulo || '', 'es');
-
-				// CORREGIDO AQUÍ: Orden cronológico estricto apuntando a fecha_inicio en snake_case
 				return (a.fecha_inicio || '').localeCompare(b.fecha_inicio || '');
 			});
-	}, [listaEventos, infoCategoria, bannerActivo, busqueda, catSel, mesSel, ciudadSel, ordenSel, soloInminentes, esCategoria]);
+	}, [listaEventos, infoCategoria, bannerActivo, busqueda, catSel, mesSel, ciudadSel, ordenSel, soloInminentes, esCategoria, maestroCategorias, mostrarHeroBanner]);
 
-	// 2. Extracción dinámica de filtros adaptativos basados en la data de Supabase
+	// 3. Extracción dinámica de filtros adaptativos
 	const filtrosDisponibles = useMemo(() => {
 		const meses = new Set<string>();
 		const ciudades = new Set<string>();
-		const categorias = new Set<string>();
+		const categoriasVisibles = new Set<string>();
 
 		const conjuntoOrigen = soloInminentes ? eventosProcesados : listaEventos;
 
 		conjuntoOrigen.forEach((evento: any) => {
 			if (evento.ciudad) ciudades.add(evento.ciudad.toUpperCase().trim());
 
-			// Extraemos ticketeras como categorías dinámicas provisorias para la barra
-			if (!esCategoria && evento.ticketera) {
-				categorias.add(evento.ticketera.toUpperCase().trim());
+			if (!esCategoria && evento.categoria_ids && maestroCategorias.length > 0) {
+				evento.categoria_ids.forEach((id: number) => {
+					const cObj = maestroCategorias.find((c) => Number(c.id) === Number(id));
+					if (cObj && cObj.nombre_json !== 'HOME') {
+						categoriasVisibles.add(cObj.nombre_json.toUpperCase().trim());
+					}
+				});
 			}
 
 			const campoFechaIn = evento.fecha_inicio;
@@ -142,26 +169,25 @@ export default function PlantillaCartelera({ listaEventos, titulo, subtitulo, ta
 		const mesesOrdenados = ORDEN_CALENDARIO.filter((mes) => meses.has(mes));
 
 		return {
-			categorias: esCategoria ? ['TODOS'] : ['TODOS', ...Array.from(categorias).sort()],
+			categorias: esCategoria ? ['TODOS'] : ['TODOS', ...Array.from(categoriasVisibles).sort()],
 			meses: soloInminentes ? ['TODOS'] : ['TODOS', ...mesesOrdenados],
 			recintos: ['TODOS'],
 			ciudades: ['TODOS', ...Array.from(ciudades).sort()],
 		};
-	}, [listaEventos, eventosProcesados, soloInminentes, esCategoria]);
+	}, [listaEventos, eventosProcesados, soloInminentes, esCategoria, maestroCategorias]);
 
 	const eventosVisibles = eventosProcesados.slice(0, limiteVisible);
 
 	return (
 		<main className='min-h-screen font-mono'>
-			{esCategoria && bannerActivo && <MainBanner evento={bannerActivo} />}
+			{/* 🚀 CORREGIDO: El banner ahora se renderiza de forma adaptativa en la Home y secciones */}
+			{mostrarHeroBanner && bannerActivo && <MainBanner evento={bannerActivo} />}
 
 			<section className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8'>
-				{/* BOTÓN REGRESAR TÉCNICO */}
 				<button onClick={() => router.push('/')} className='text-xs font-black text-gray-400 hover:text-red-600 transition-colors uppercase tracking-wider cursor-pointer'>
 					← VOLVER A LA PORTADA PRINCIPAL // QSTG_SYS
 				</button>
 
-				{/* ENCABEZADO DE LA CARTELERA ADAPTATIVO */}
 				<div className='flex flex-col gap-1 '>
 					<span className='w-max bg-black text-white text-[9px] font-mono font-black px-2.5 py-1 uppercase tracking-widest border border-black'>
 						{esCategoria ? `SECCIÓN // ${infoCategoria.nombre_json.toUpperCase()}` : tagSistema}
@@ -174,7 +200,6 @@ export default function PlantillaCartelera({ listaEventos, titulo, subtitulo, ta
 					</p>
 				</div>
 
-				{/* BARRA DE FILTROS */}
 				{!esCategoria && (
 					<FilterBar
 						busqueda={busqueda}
@@ -210,7 +235,6 @@ export default function PlantillaCartelera({ listaEventos, titulo, subtitulo, ta
 					/>
 				)}
 
-				{/* GRILLA DE TARJETAS CORREGIDA */}
 				{eventosVisibles.length > 0 ? (
 					<>
 						<div className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6'>

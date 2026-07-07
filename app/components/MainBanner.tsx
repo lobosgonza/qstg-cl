@@ -1,72 +1,81 @@
-'use client';
-
 import React from 'react';
-import Link from 'next/link';
 
-export default function MainBanner({ evento }: { evento: any }) {
+interface MainBannerProps {
+	evento: {
+		titulo: string;
+		slug: string;
+		ticketera: string;
+		url_ticket: string;
+		url_imagen: string;
+		url_banner: string;
+		recinto: string;
+		ciudad: string;
+		texto_fechas: string;
+		hora: string;
+		resumen_seo: string;
+	};
+}
+
+export default function MainBanner({ evento }: MainBannerProps) {
+	// Si la base de datos aún no se ha descargado de forma asíncrona, evitamos la rotura del render
 	if (!evento) return null;
 
-	const titulo = evento['Título'] || 'CONCIERTO DESTACADO';
-	const imagen = evento['Banner URL'] || evento['Imagen URL'] || 'https://images.unsplash.com/photo-1506157786151-b8491531f063?q=80&w=1000';
-	const recinto = evento['Recinto'] || 'POR CONFIRMAR';
-	const fechaTexto = evento['Día Texto'] || 'PRÓXIMAMENTE';
-	const categoria = evento['Categoría'] || 'DESTACADO';
-	const slug = evento['Slug'] || '#';
+	// Limpieza brutalista del recinto para que se vea estético en imprenta
+	const nombreRecinto = (evento.recinto || 'POR CONFIRMAR').split(' - ')[0];
 
 	return (
-		/* 📰 CONTENEDOR MAESTRO REFORZADO */
-		<div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 select-none'>
-			{/* 🎨 ESTRUCTURA ADAPTATIVA DE ALTO IMPACTO: Mantiene la sombra externa fija */}
-			<div className='bg-white border-7 border-black rounded-none shadow-[6px_6px_0px_#000000] grid grid-cols-1 md:grid-cols-12 overflow-hidden min-h-[360px] transition-shadow duration-300 '>
-				{/* 📱 BLOQUE IMAGEN: Aislado con z-0 y overflow estricto para proteger la sombra trasera */}
-				<div className='order-first md:order-last md:col-span-5 relative bg-black min-h-[260px] sm:min-h-[300px] md:min-h-full border-b-4 md:border-b-0 md:border-l-4 border-black group overflow-hidden z-0 rounded-none ring-4 ring-inset ring-white'>
-					<img
-						src={imagen}
-						alt={titulo}
-						/* Usamos transformaciones puras aceleradas por hardware para que no afecten el layout exterior */
-						className='absolute inset-0 w-full h-full object-cover object-center filter contrast-125 brightness-95 transform transition-transform duration-500 ease-out group-hover:scale-105 will-change-transform'
-						loading='eager'
-					/>
+		<div className='relative w-full bg-black text-white border-b-4 border-black overflow-hidden aspect-[21/9] min-h-[380px] flex items-end p-6 sm:p-12'>
+			{/* 1. IMAGEN DE FONDO DESTACADA */}
+			<img
+				src={evento.url_banner || evento.url_imagen || 'https://images.unsplash.com/photo-1506157786151-b8491531f063?q=80&w=1000'}
+				alt={evento.titulo}
+				className='absolute inset-0 w-full h-full object-cover object-center opacity-55 filter contrast-125 brightness-75 block'
+				loading='eager' // Forzamos carga inmediata por ser el elemento principal (LCP)
+				referrerPolicy='no-referrer'
+			/>
 
-					{/* Sello técnico de esquina inferior */}
-					<span className='absolute bottom-3 left-3 bg-white text-gray-950 font-mono font-black text-[9px] px-2 py-0.5 uppercase border border-black shadow-[2px_2px_0px_#000] z-10'>
-						PRENSA_IMG // SPONSOR_ID_{evento.Hora ? 'OK' : 'RAW'}
-					</span>
+			{/* Capa de contraste brutalista oscura */}
+			<div className='absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent pointer-events-none' />
+
+			{/* 2. BLOQUE COGNITIVO DEL HIGHLIGHT */}
+			<div className='relative z-10 max-w-4xl space-y-4 uppercase tracking-tight'>
+				<span className='bg-yellow-400 text-black text-[9px] font-mono font-black px-2.5 py-1 uppercase tracking-widest border border-black shadow-[2px_2px_0px_#000]'>
+					// DESTACADO
+				</span>
+
+				<h1 className='font-editorial text-2xl sm:text-5xl font-black leading-none uppercase tracking-tighter max-w-3xl drop-shadow-md text-white'>{evento.titulo}</h1>
+
+				<p className='text-[11px] sm:text-xs font-mono font-bold max-w-2xl text-gray-300 normal-case italic leading-relaxed'>
+					{evento.resumen_seo || 'Sin descripción resumida disponible para este bloque.'}
+				</p>
+
+				{/* Metadatos técnicos de imprenta */}
+				<div className='flex flex-wrap gap-x-6 gap-y-2 text-[10px] font-mono font-black text-gray-300 pt-2 border-t border-white/20 w-max max-w-full uppercase'>
+					<div>
+						// LOCAL: <span className='text-white'>{nombreRecinto}</span>
+					</div>
+					<div>
+						// CIUDAD: <span className='text-yellow-400'>{evento.ciudad || 'SCL'}</span>
+					</div>
+					<div>
+						// FECHA: <span className='text-white'>{evento.texto_fechas}</span>
+					</div>
+					{evento.hora && (
+						<div>
+							// HORA: <span className='text-white'>{evento.hora} HRS</span>
+						</div>
+					)}
 				</div>
 
-				{/* 📝 BLOQUE TEXTO EDITORIAL */}
-				<div className='md:col-span-7 p-5 sm:p-8 flex flex-col justify-between space-y-6 bg-white relative z-10'>
-					{/* Detalles del Título e Identificadores */}
-					<div className='space-y-3'>
-						<div className='flex items-center gap-2 flex-wrap'>
-							<span className='w-max bg-black text-white text-[9px] font-mono font-black px-2.5 py-1 uppercase tracking-widest border shadow-[2px_2px_0px_#000]'>
-								_DESTACADO // {categoria}
-							</span>
-						</div>
-
-						{/* Título Masivo */}
-						<h2 className='font-editorial text-3xl sm:text-4xl md:text-5xl font-black text-gray-950 uppercase tracking-tighter leading-none pt-1 break-words'>{titulo}</h2>
-					</div>
-
-					{/* Ficha técnica inferior y botón de acción masivo */}
-					<div className='flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-4 border-t-4 border-black font-mono w-full relative z-20'>
-						{/* Metadatos limpios */}
-						<div className='text-[11px] sm:text-xs font-bold text-gray-900 uppercase tracking-tight space-y-1 bg-gray-50 p-2 sm:p-3 border-2 border-black rounded-none shadow-[2px_2px_0px_rgba(0,0,0,0.1)] w-full sm:w-auto'>
-							<p className='flex items-center gap-1'>
-								<span className='text-red-600 font-black'>CRONOGRAMA //</span> {fechaTexto} {evento.Hora ? `// ${evento.Hora} HRS` : ''}
-							</p>
-							<p className='flex items-center gap-1'>
-								<span className='text-red-600 font-black'>EMPLAZAMIENTO //</span> {recinto.split(' - ')[0]} // {evento.Ciudad || 'SCL'}
-							</p>
-						</div>
-
-						{/* Botón de Acción Masivo */}
-						<Link
-							href={`/eventos/${slug}`}
-							className='w-full sm:w-auto text-center bg-red-600  text-white hover:bg-black  hover:text-white font-black text-xs px-8 py-4 rounded-none uppercase tracking-widest border-2 border-black shadow-[4px_4px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all duration-100 shrink-0 block hover:-translate-x-1 hover:-translate-y-1'>
-							ACCEDER A LA FICHA ➜
-						</Link>
-					</div>
+				{/* Botón de compra de entradas */}
+				<div className='pt-4'>
+					<a
+						href={evento.url_ticket}
+						target='_blank'
+						rel='noopener noreferrer'
+						className='inline-block bg-white text-black hover:bg-red-600 hover:text-white font-mono font-black text-xs px-6 py-3.5 uppercase tracking-wider border-2 border-black shadow-[4px_4px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[2px_2px_0px_#000000] transition-all duration-100 cursor-pointer'>
+						ADQUIRIR ACCESOS EN {evento.ticketera} ➜
+					</a>
 				</div>
 			</div>
 		</div>
