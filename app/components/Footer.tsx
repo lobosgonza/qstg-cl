@@ -24,9 +24,7 @@ export default function Footer() {
 							QSTG<span className='text-red-600'>.CL</span>
 						</div>
 						<p className='text-[11px] text-gray-700 leading-relaxed uppercase tracking-tight font-mono font-black text-justify italic'>
-							<span className='text-white bg-black px-2 py-0.5 not-italic text-[10px] tracking-widest block w-max mb-2 shadow-[2px_2px_0px_#000]'>
-								SISTEMA DE DIFUSIÓN // DATA_SCRAPING
-							</span>
+							<span className='text-white bg-red-600 px-2 py-0.5 not-italic text-[10px] tracking-widest block w-max mb-2 shadow-[2px_2px_0px_#000]'>// SISTEMA DE DIFUSIÓN</span>
 							UNA BITÁCORA ALIMENTADA DE FORMA PARASITARIA.
 							<strong> NUESTROS SCRIPTS RASTREAN EXTERNAMENTE</strong> LOS REGISTROS PÚBLICOS DE LAS TIQUETERAS CORPORATIVAS PARA EXTRAER AUTOMÁTICAMENTE EL REGISTRO DE SHOWS
 							VIGENTES. LIMPIAMOS CADA LÍNEA DE INFORMACIÓN, DEPURAMOS EL RUIDO INVASIVO Y TE ENTREGAMOS LA DATA

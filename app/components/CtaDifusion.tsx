@@ -22,7 +22,7 @@ export default function CtaDifusion() {
 				{/* El Botón de Acción Sólido */}
 				<Link
 					href='/contacto'
-					className='w-full md:w-auto text-center bg-red-600 text-white hover:bg-white hover:text-black font-mono font-black text-xs sm:text-sm px-8 py-4.5 rounded-none uppercase tracking-widest border-2 border-red-600 shadow-[4px_4px_0px_#000000] md:shadow-none active:translate-x-0.5 active:translate-y-0.5 transition-all duration-100 block shrink-0'>
+					className='w-full md:w-auto text-center bg-red-600 text-white hover:bg-white hover:text-black font-mono font-black text-xs sm:text-sm px-8 py-4.5 rounded-none uppercase tracking-widest  md:shadow-none active:translate-x-0.5 active:translate-y-0.5 transition-all duration-100 block shrink-0'>
 					// PUBLICAR PANORAMA ✚
 				</Link>
 			</div>

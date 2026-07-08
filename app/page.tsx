@@ -1,11 +1,14 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '../supabaseClient'; // Conector nativo de la raíz
 import MainBanner from './components/MainBanner';
 import EventCard from './components/EventCard';
 
 export default function HomePage() {
+	const router = useRouter();
+
 	const [eventos, setEventos] = useState<any[]>([]);
 	const [categorias, setCategorias] = useState<any[]>([]);
 	const [cargando, setCargando] = useState(true);
@@ -25,18 +28,17 @@ export default function HomePage() {
 		cargarPortada();
 	}, []);
 
-	// 🧠 Buscamos dinámicamente el show destacado (Highlight) configurado para la HOME
+	// 🧠 Buscamos el show destacado (Highlight) configurado para la HOME en Supabase
 	const bannerHome = useMemo(() => {
 		const filaHome = categorias.find((c) => c.nombre_json === 'HOME');
 		if (filaHome && filaHome.slug_sponsor) {
 			const destacado = eventos.find((e: any) => e.slug?.toLowerCase() === filaHome.slug_sponsor.toLowerCase());
 			if (destacado) return destacado;
 		}
-		// Fallback técnico preventivo: si no encuentra el slug, muestra el primer show disponible
 		return eventos[0] || null;
 	}, [categorias, eventos]);
 
-	// Filtro automatizado para la fila superior de "PRÓXIMOS 7 DÍAS"
+	// Filtro fijo superior para "PRÓXIMOS 7 DÍAS"
 	const proximosEventos = useMemo(() => {
 		const hoy = new Date();
 		hoy.setHours(0, 0, 0, 0);
@@ -46,85 +48,103 @@ export default function HomePage() {
 		limite7Dias.setHours(23, 59, 59, 999);
 
 		return eventos.filter((e: any) => {
-			if (e.slug === bannerHome?.slug) return false;
-
-			// Forzamos la lectura de la fecha en horario local añadiendo la T de tiempo
 			const fechaIn = new Date((e.fecha_inicio || '1970-01-01') + 'T00:00:00');
 			const fechaFin = e.fecha_fin ? new Date(e.fecha_fin + 'T23:59:59') : new Date((e.fecha_inicio || '1970-01-01') + 'T23:59:59');
 
 			return fechaFin >= hoy && fechaIn <= limite7Dias;
 		});
-	}, [eventos, bannerHome]);
+	}, [eventos]);
 
 	if (cargando) {
 		return (
-			<div className='min-h-screen bg-white font-mono flex items-center justify-center'>
-				<span className='text-xs font-black animate-pulse uppercase tracking-widest bg-black text-white px-4 py-2 border-2 border-black shadow-[4px_4px_0px_#000]'>
-					SYS // CARGANDO_PORTADA_PRINCIPAL...
+			<div className='min-h-screen bg-white font-mono flex items-center justify-center p-4'>
+				<span className='text-[10px] sm:text-xs font-black animate-pulse uppercase tracking-widest bg-black text-white px-4 py-2 border-2 border-black shadow-[4px_4px_0px_#000] text-center'>
+					SYS // CARGANDO_PORTADA_SWIPE_ENGINE...
 				</span>
 			</div>
 		);
 	}
 
 	return (
-		<main className='min-h-screen pb-20 font-mono bg-white'>
-			{/* 🚀 EL HERO BANNER CONECTADO A TU DESTACADO DE SUPABASE */}
+		<main className='min-h-screen pb-24 font-mono bg-white overflow-x-hidden'>
+			{/* HERO HIGHLIGHT */}
 			{bannerHome && <MainBanner evento={bannerHome} />}
 
-			<div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 space-y-12'>
-				{/* FILA TEMPORAL: PRÓXIMOS 7 DÍAS */}
+			<div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 space-y-14'>
+				{/* 📰 FILA DE PRÓXIMOS 7 DÍAS */}
 				<div className='space-y-4'>
 					<div className='flex items-center justify-between border-b-2 border-black pb-2'>
-						<h2 className='font-editorial text-xl font-black uppercase tracking-tight'>// PRÓXIMOS 7 DÍAS</h2>
+						<h2 className='font-editorial text-lg sm:text-xl font-black uppercase tracking-tight'>// PRÓXIMOS 7 DÍAS</h2>
 					</div>
-					{proximosEventos.length > 0 ? (
-						<div className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6'>
-							{proximosEventos.map((evento) => {
-								// 🚀 CRUCE DINÁMICO: Buscamos el nombre de la primera categoría asignada en el maestro
-								const primerId = evento.categoria_ids?.[0];
-								const catMatch = categorias.find((c) => Number(c.id) === Number(primerId));
-								const nombreCategoria = catMatch ? catMatch.nombre_json : 'PANORAMA';
 
-								return <EventCard key={evento.slug} evento={{ ...evento, categoria: nombreCategoria }} slugLocal={evento.slug} />;
-							})}
-						</div>
+					{proximosEventos.length > 0 ? (
+						<>
+							{/* Contenedor Swipe Horizontal Móvil */}
+							<div className='flex overflow-x-auto snap-x snap-mandatory gap-6 pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]'>
+								{proximosEventos.map((evento) => {
+									const primerId = evento.categoria_ids?.[0];
+									const catMatch = categorias.find((c) => Number(c.id) === Number(primerId));
+									return (
+										<div key={`prox-${evento.slug}`} className='w-full sm:w-[calc(50%-12px)] md:w-[calc(33.33%-16px)] lg:w-[calc(25%-18px)] shrink-0 snap-start h-full'>
+											<EventCard evento={{ ...evento, categoria: catMatch ? catMatch.nombre_json : 'PANORAMA' }} slugLocal={evento.slug} />
+										</div>
+									);
+								})}
+							</div>
+
+							{/* 🚀 NUEVO: Botón de acción para el bloque de próximos eventos */}
+							<div className='pt-2'>
+								<button
+									onClick={() => router.push('/todos-los-eventos')}
+									className='w-full text-center bg-white text-gray-950 hover:bg-red-600 hover:text-white font-mono font-black text-xs py-4 rounded-none uppercase tracking-widest border-2 border-black shadow-[4px_4px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all duration-100 cursor-pointer'>
+									Ver Próximos Eventos ➜
+								</button>
+							</div>
+						</>
 					) : (
-						<div className='py-6 border border-dashed border-gray-300 text-center'>
+						<div className='py-8 border border-dashed border-gray-300 text-center'>
 							<p className='text-xs text-gray-400 uppercase font-bold tracking-tight'>Cero transmisiones inminentes agendadas para esta semana.</p>
 						</div>
 					)}
 				</div>
 
-				{/* FILAS AUTOMÁTICAS POR CATEGORÍA MAESTRA */}
+				{/* 🎪 FILAS AUTOMÁTICAS POR CATEGORÍA MAESTRA */}
 				{categorias
-					.filter((cat) => cat.nombre_json !== 'HOME') // Ignoramos la fila de configuración técnica de la home
+					.filter((cat) => cat.nombre_json !== 'HOME')
 					.map((cat) => {
-						// Filtramos los eventos cruzando el nuevo arreglo numérico multi-etiqueta
 						const eventosDeCat = eventos
 							.filter((e) => {
-								if (e.slug === bannerHome?.slug) return false; // Evitamos duplicar con el Hero
 								return e.categoria_ids?.map(Number).includes(Number(cat.id));
 							})
-							.slice(0, 4); // Mostramos un preview elegante de máximo 4 tarjetas por sección
+							.slice(0, 12);
 
-						if (eventosDeCat.length === 0) return null; // Si no hay shows vigentes en esta sección, la fila se oculta sola
+						if (eventosDeCat.length === 0) return null;
 
 						return (
-							<div key={cat.id} className='space-y-4'>
+							<div key={`seccion-${cat.id}`} className='space-y-4'>
 								<div className='flex items-center justify-between border-b-2 border-black pb-2'>
-									<h2 className='font-editorial text-xl font-black uppercase tracking-tight flex items-center gap-2'>
+									<h2 className='font-editorial text-xl sm:text-2xl font-black uppercase tracking-tight flex items-center gap-2'>
 										<span>{cat.icono}</span>
 										<span>{cat.nombre_json}</span>
 									</h2>
-									<a href={`/${cat.slug_url}`} className='text-xs font-black text-gray-400 hover:text-red-600 uppercase tracking-wider transition-colors cursor-pointer'>
-										Ver todo ({cat.nombre_json}) →
-									</a>
 								</div>
-								<div className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6'>
+
+								{/* Contenedor Swipe Horizontal Móvil */}
+								<div className='flex overflow-x-auto snap-x snap-mandatory gap-6 pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]'>
 									{eventosDeCat.map((evento) => (
-										/* 🚀 HERENCIA DIRECTA: Como ya estamos dentro de la fila de la categoría, le inyectamos directamente su nombre real */
-										<EventCard key={evento.slug} evento={{ ...evento, categoria: cat.nombre_json }} slugLocal={evento.slug} />
+										<div key={`item-${cat.id}-${evento.slug}`} className='w-full sm:w-[calc(50%-12px)] md:w-[calc(33.33%-16px)] lg:w-[calc(25%-18px)] shrink-0 snap-start h-full'>
+											<EventCard evento={{ ...evento, categoria: cat.nombre_json }} slugLocal={evento.slug} />
+										</div>
 									))}
+								</div>
+
+								{/* Botón de acceso por sección */}
+								<div className='pt-2'>
+									<button
+										onClick={() => router.push(`/${cat.slug_url}`)}
+										className='w-full text-center bg-white text-gray-950 hover:bg-red-600 hover:text-white font-mono font-black text-xs py-4 rounded-none uppercase tracking-widest border-2 border-black shadow-[4px_4px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all duration-100 cursor-pointer'>
+										Ver Todos los Eventos de {cat.nombre_json} ➜
+									</button>
 								</div>
 							</div>
 						);
