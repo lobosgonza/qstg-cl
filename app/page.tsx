@@ -38,7 +38,7 @@ export default function HomePage() {
 		return eventos[0] || null;
 	}, [categorias, eventos]);
 
-	// Filtro fijo superior para "PRÓXIMOS 7 DÍAS"
+	// Filtro fijo superior para "PRÓXIMOS 7 DÍAS" (Limitado a un máximo de 4 tarjetas)
 	const proximosEventos = useMemo(() => {
 		const hoy = new Date();
 		hoy.setHours(0, 0, 0, 0);
@@ -47,19 +47,21 @@ export default function HomePage() {
 		limite7Dias.setDate(hoy.getDate() + 7);
 		limite7Dias.setHours(23, 59, 59, 999);
 
-		return eventos.filter((e: any) => {
-			const fechaIn = new Date((e.fecha_inicio || '1970-01-01') + 'T00:00:00');
-			const fechaFin = e.fecha_fin ? new Date(e.fecha_fin + 'T23:59:59') : new Date((e.fecha_inicio || '1970-01-01') + 'T23:59:59');
+		return eventos
+			.filter((e: any) => {
+				const fechaIn = new Date((e.fecha_inicio || '1970-01-01') + 'T00:00:00');
+				const fechaFin = e.fecha_fin ? new Date(e.fecha_fin + 'T23:59:59') : new Date((e.fecha_inicio || '1970-01-01') + 'T23:59:59');
 
-			return fechaFin >= hoy && fechaIn <= limite7Dias;
-		});
+				return fechaFin >= hoy && fechaIn <= limite7Dias;
+			})
+			.slice(0, 4); // Limitado a 4 cards máximo para simetría de grilla
 	}, [eventos]);
 
 	if (cargando) {
 		return (
 			<div className='min-h-screen bg-white font-mono flex items-center justify-center p-4'>
 				<span className='text-[10px] sm:text-xs font-black animate-pulse uppercase tracking-widest bg-black text-white px-4 py-2 border-2 border-black shadow-[4px_4px_0px_#000] text-center'>
-					SYS // CARGANDO_PORTADA_SWIPE_ENGINE...
+					SYS // CARGANDO_PORTADA_UNIFIED_ENGINE...
 				</span>
 			</div>
 		);
@@ -74,38 +76,45 @@ export default function HomePage() {
 				{/* 📰 FILA DE PRÓXIMOS 7 DÍAS */}
 				<div className='space-y-4'>
 					<div className='flex items-center justify-between border-b-2 border-black pb-2'>
-						<h2 className='font-editorial text-lg sm:text-xl font-black uppercase tracking-tight'>// PRÓXIMOS 7 DÍAS</h2>
+						<h2 className='font-editorial text-xl sm:text-2xl font-black uppercase tracking-tight flex items-center gap-2'>
+							<span>📅</span>
+							<span>PRÓXIMOS 7 DÍAS</span>
+						</h2>
 					</div>
 
 					{proximosEventos.length > 0 ? (
-						<>
-							{/* Contenedor Swipe Horizontal Móvil */}
-							<div className='flex overflow-x-auto snap-x snap-mandatory gap-6 pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]'>
+						<div className='w-full'>
+							{/* 🚀 CORREGIDO: Uso de grid puro con alternancia de flujos (grid-flow-col para mobile, sm:grid-flow-row para tablet/PC) */}
+							<div
+								id='scroll-proximos'
+								className='grid grid-flow-col auto-cols-[calc(100vw-32px)] sm:grid-flow-row sm:grid-cols-2 lg:grid-cols-4 overflow-x-auto sm:overflow-visible snap-x snap-mandatory scroll-px-4 gap-6 pt-4 pb-6 px-4 -mx-4 sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]'>
 								{proximosEventos.map((evento) => {
 									const primerId = evento.categoria_ids?.[0];
 									const catMatch = categorias.find((c) => Number(c.id) === Number(primerId));
 									return (
-										<div key={`prox-${evento.slug}`} className='w-full sm:w-[calc(50%-12px)] md:w-[calc(33.33%-16px)] lg:w-[calc(25%-18px)] shrink-0 snap-start h-full'>
+										<div key={`prox-${evento.slug}`} className='w-full snap-start h-full'>
 											<EventCard evento={{ ...evento, categoria: catMatch ? catMatch.nombre_json : 'PANORAMA' }} slugLocal={evento.slug} />
 										</div>
 									);
 								})}
+								{/* Guardián de espaciado móvil */}
+								<div className='w-2 shrink-0 sm:hidden block' />
 							</div>
-
-							{/* 🚀 NUEVO: Botón de acción para el bloque de próximos eventos */}
-							<div className='pt-2'>
-								<button
-									onClick={() => router.push('/todos-los-eventos')}
-									className='w-full text-center bg-white text-gray-950 hover:bg-red-600 hover:text-white font-mono font-black text-xs py-4 rounded-none uppercase tracking-widest border-2 border-black shadow-[4px_4px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all duration-100 cursor-pointer'>
-									Ver Próximos Eventos ➜
-								</button>
-							</div>
-						</>
+						</div>
 					) : (
 						<div className='py-8 border border-dashed border-gray-300 text-center'>
 							<p className='text-xs text-gray-400 uppercase font-bold tracking-tight'>Cero transmisiones inminentes agendadas para esta semana.</p>
 						</div>
 					)}
+
+					{/* Botón de acción unificado */}
+					<div className='pt-2'>
+						<button
+							onClick={() => router.push('/todos-los-eventos')}
+							className='w-full text-center bg-white text-gray-950 hover:bg-black hover:text-white font-mono font-black text-xs py-4 rounded-none uppercase tracking-widest border-2 border-black shadow-[4px_4px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all duration-100 cursor-pointer'>
+							Ver Todos los Próximos Eventos ➜
+						</button>
+					</div>
 				</div>
 
 				{/* 🎪 FILAS AUTOMÁTICAS POR CATEGORÍA MAESTRA */}
@@ -116,7 +125,7 @@ export default function HomePage() {
 							.filter((e) => {
 								return e.categoria_ids?.map(Number).includes(Number(cat.id));
 							})
-							.slice(0, 12);
+							.slice(0, 4);
 
 						if (eventosDeCat.length === 0) return null;
 
@@ -129,20 +138,24 @@ export default function HomePage() {
 									</h2>
 								</div>
 
-								{/* Contenedor Swipe Horizontal Móvil */}
-								<div className='flex overflow-x-auto snap-x snap-mandatory gap-6 pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]'>
-									{eventosDeCat.map((evento) => (
-										<div key={`item-${cat.id}-${evento.slug}`} className='w-full sm:w-[calc(50%-12px)] md:w-[calc(33.33%-16px)] lg:w-[calc(25%-18px)] shrink-0 snap-start h-full'>
-											<EventCard evento={{ ...evento, categoria: cat.nombre_json }} slugLocal={evento.slug} />
-										</div>
-									))}
+								<div className='w-full'>
+									{/* 🚀 CORREGIDO: Mismo sistema de grilla híbrida blindada para las categorías de la base de datos */}
+									<div className='grid grid-flow-col auto-cols-[calc(100vw-32px)] sm:grid-flow-row sm:grid-cols-2 lg:grid-cols-4 overflow-x-auto sm:overflow-visible snap-x snap-mandatory scroll-px-4 gap-6 pt-4 pb-6 px-4 -mx-4 sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]'>
+										{eventosDeCat.map((evento) => (
+											<div key={`item-${cat.id}-${evento.slug}`} className='w-full snap-start h-full'>
+												<EventCard evento={{ ...evento, categoria: cat.nombre_json }} slugLocal={evento.slug} />
+											</div>
+										))}
+										{/* Guardián de espaciado móvil */}
+										<div className='w-2 shrink-0 sm:hidden block' />
+									</div>
 								</div>
 
-								{/* Botón de acceso por sección */}
+								{/* Botón de acceso por sección Idéntico */}
 								<div className='pt-2'>
 									<button
 										onClick={() => router.push(`/${cat.slug_url}`)}
-										className='w-full text-center bg-white text-gray-950 hover:bg-red-600 hover:text-white font-mono font-black text-xs py-4 rounded-none uppercase tracking-widest border-2 border-black shadow-[4px_4px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all duration-100 cursor-pointer'>
+										className='w-full text-center bg-white text-gray-950 hover:bg-black hover:text-white font-mono font-black text-xs py-4 rounded-none uppercase tracking-widest border-2 border-black shadow-[4px_4px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all duration-100 cursor-pointer'>
 										Ver Todos los Eventos de {cat.nombre_json} ➜
 									</button>
 								</div>
